@@ -15,6 +15,7 @@ import {
   UserX,
   ServerOff,
 } from "lucide-react";
+import { ModeToggle } from "@/components/mode-toggle";
 
 const features = [
   {
@@ -71,6 +72,7 @@ export default function LandingPage() {
             <Button size="sm" asChild>
               <Link to="/create">Create Chat</Link>
             </Button>
+            <ModeToggle />
           </div>
         </nav>
       </header>
@@ -89,8 +91,8 @@ export default function LandingPage() {
         </h1>
 
         <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-          Encrypted end-to-end chat. No sign-up. No data stored. No trace.
-          Chats auto-delete after 2 hours.
+          Encrypted end-to-end chat. No sign-up. No data stored. No trace. Chats
+          auto-delete after 2 hours.
         </p>
 
         <div className="mt-10 flex flex-col gap-3 sm:flex-row">
