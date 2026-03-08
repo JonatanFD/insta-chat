@@ -1,4 +1,4 @@
-const WS_BASE = "ws://localhost:8080/ws/chats";
+const WS_BASE = import.meta.env.VITE_PUBLIC_WS_API;
 
 type MessageHandler = (data: string) => void;
 type ConnectionHandler = (connected: boolean) => void;
