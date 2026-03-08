@@ -50,12 +50,10 @@ export default function ChatPage() {
   const session = useChatStore((s) => s.session);
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
-  const [inputValue, setInputValue] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [e2eStatus, setE2eStatus] = useState<E2EStatus>("pending");
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   const e2eReadyRef = useRef(false);
   const sessionRef = useRef(session);
 
