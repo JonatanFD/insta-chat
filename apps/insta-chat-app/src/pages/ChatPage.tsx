@@ -79,7 +79,6 @@ export default function ChatPage() {
         const peer = participants.find(
           (p) => p.participantId !== session.participantId,
         );
-
         if (peer && peer.publicKey && !cancelled) {
           await encryptionService.deriveSharedKeyFromString(peer.publicKey);
           setE2eReady(true);
@@ -292,7 +291,7 @@ export default function ChatPage() {
       </header>
 
       {/* Messages area */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4 overflow-auto" ref={scrollRef}>
         <div className="mx-auto max-w-2xl space-y-4">
           {/* Welcome system message */}
           <div className="flex justify-center">

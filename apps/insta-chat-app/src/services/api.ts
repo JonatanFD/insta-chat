@@ -54,7 +54,6 @@ export async function joinChat(
   // Response is a raw JWT string
   return res.text();
 }
-
 export async function fetchParticipants(
   chatName: string,
   token: string,
@@ -66,12 +65,12 @@ export async function fetchParticipants(
     },
   );
 
-  console.log("Current Participants:", await res.json());
-
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Failed to fetch participants (${res.status})`);
   }
 
-  return res.json();
+  const data = await res.json();
+  console.log("Current Participants:", data); // ← log DESPUÉS de parsear
+  return data;
 }
