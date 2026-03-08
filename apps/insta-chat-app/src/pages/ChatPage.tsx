@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Clock, MessageSquare, Send } from "lucide-react";
+import { ArrowLeft, Clock, MessageSquare } from "lucide-react";
 import { chatSocket } from "@/services/socket";
 import { encryptionService } from "@/services/encryption";
 import { fetchParticipants } from "@/services/api";
@@ -16,6 +15,7 @@ import {
   ConnectionStatus,
   type E2EStatus,
 } from "@/components/ConnectionStatus";
+import { ChatInput } from "@/components/ChatInput";
 
 const SYSTEM_MSG_REGEX = /^.+ Has (joined|left)$/;
 
@@ -55,7 +55,7 @@ export default function ChatPage() {
   const [e2eStatus, setE2eStatus] = useState<E2EStatus>("pending");
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const e2eReadyRef = useRef(false);
   const sessionRef = useRef(session);
 
@@ -180,10 +180,8 @@ export default function ChatPage() {
     }
   }, [messages]);
 
-  const handleSend = async () => {
-    const content = inputValue.trim();
-    if (!content || !session) return;
-
+  const handleSend = async (content: string) => {
+    if (!session) return;
     const timestamp = Date.now();
 
     setMessages((prev) => [
@@ -199,7 +197,6 @@ export default function ChatPage() {
     ]);
 
     let payload: string;
-
     if (encryptionService.hasSharedKey) {
       const encrypted = await encryptionService.encrypt(content);
       payload = JSON.stringify({
@@ -218,17 +215,7 @@ export default function ChatPage() {
         timestamp,
       });
     }
-    console.log("Payload:", payload);
     chatSocket.send(payload);
-    setInputValue("");
-    inputRef.current?.focus();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
   };
 
   if (!session) return null;
@@ -321,26 +308,7 @@ export default function ChatPage() {
 
       <Separator />
 
-      <div className="p-4">
-        <div className="mx-auto flex max-w-2xl items-center gap-2">
-          <Input
-            ref={inputRef}
-            placeholder="Type a message..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="flex-1"
-            autoFocus
-          />
-          <Button
-            size="icon"
-            onClick={handleSend}
-            disabled={!inputValue.trim()}
-          >
-            <Send className="size-4" />
-          </Button>
-        </div>
-      </div>
+      <ChatInput onSend={handleSend} disabled={!isConnected} />
     </div>
   );
 }
