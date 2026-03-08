@@ -77,7 +77,7 @@ export default function ChatPage() {
       try {
         const participants = await fetchParticipants(chatName, session.token);
         const peer = participants.find(
-          (p) => p.participantId !== session.participantId
+          (p) => p.participantId !== session.participantId,
         );
 
         if (peer && peer.publicKey && !cancelled) {
@@ -102,7 +102,7 @@ export default function ChatPage() {
     try {
       const participants = await fetchParticipants(chatName, session.token);
       const peer = participants.find(
-        (p) => p.participantId !== session.participantId
+        (p) => p.participantId !== session.participantId,
       );
       if (peer?.publicKey) {
         await encryptionService.deriveSharedKeyFromString(peer.publicKey);
@@ -237,6 +237,7 @@ export default function ChatPage() {
         timestamp,
       });
     }
+    console.log("Payload sent: ", payload);
 
     chatSocket.send(payload);
     setInputValue("");
@@ -348,7 +349,7 @@ export default function ChatPage() {
                   </p>
                 </div>
               </div>
-            )
+            ),
           )}
         </div>
       </ScrollArea>
