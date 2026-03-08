@@ -117,6 +117,10 @@ class EncryptionService {
     return this.keyPair !== null;
   }
 
+  resetSharedKey(): void {
+    this.sharedKey = null;
+  }
+
   get hasSharedKey(): boolean {
     return this.sharedKey !== null;
   }

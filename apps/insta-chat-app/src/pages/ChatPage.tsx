@@ -6,20 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import {
-  ArrowLeft,
-  Clock,
-  Lock,
-  MessageSquare,
-  Send,
-  Wifi,
-  WifiOff,
-} from "lucide-react";
+import { ArrowLeft, Clock, MessageSquare, Send } from "lucide-react";
 import { chatSocket } from "@/services/socket";
 import { encryptionService } from "@/services/encryption";
 import { fetchParticipants } from "@/services/api";
 import { useChatStore } from "@/stores/chat";
 import { ModeToggle } from "@/components/mode-toggle";
+import {
+  ConnectionStatus,
+  type E2EStatus,
+} from "@/components/ConnectionStatus";
 
 const SYSTEM_MSG_REGEX = /^.+ Has (joined|left)$/;
 
@@ -56,7 +52,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isConnected, setIsConnected] = useState(false);
-  const [e2eReady, setE2eReady] = useState(false);
+  const [e2eStatus, setE2eStatus] = useState<E2EStatus>("pending");
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,35 +63,12 @@ export default function ChatPage() {
     sessionRef.current = session;
   }, [session]);
 
-  // Redirect if no session
   useEffect(() => {
     if (!session) navigate("/join", { replace: true });
   }, [session, navigate]);
 
-  const tryEstablishE2E = async () => {
-    if (e2eReadyRef.current || !sessionRef.current || !chatName) return;
-    try {
-      const participants = await fetchParticipants(
-        chatName,
-        sessionRef.current.token,
-      );
-      const peer = participants.find(
-        (p) => p.participantId !== sessionRef.current!.participantId,
-      );
-      if (peer?.publicKey) {
-        await encryptionService.deriveSharedKeyFromString(peer.publicKey);
-        e2eReadyRef.current = true;
-        setE2eReady(true);
-      }
-    } catch {
-      // peer not exists
-    }
-  };
-
   useEffect(() => {
     if (!session || !chatName) return;
-
-    tryEstablishE2E();
 
     const unsubConnection = chatSocket.onConnectionChange(setIsConnected);
 
@@ -105,8 +78,25 @@ export default function ChatPage() {
           ...prev,
           { type: "system", content: raw, timestamp: Date.now() },
         ]);
-        if (raw.endsWith("Has joined")) {
-          tryEstablishE2E();
+
+        if (raw.endsWith("Has joined") && !e2eReadyRef.current) {
+          setE2eStatus("deriving");
+          try {
+            const participants = await fetchParticipants(
+              chatName,
+              sessionRef.current!.token,
+            );
+            const peer = participants.find(
+              (p) => p.participantId !== sessionRef.current!.participantId,
+            );
+            if (peer?.publicKey) {
+              await encryptionService.deriveSharedKeyFromString(peer.publicKey);
+              e2eReadyRef.current = true;
+              setE2eStatus("ready");
+            }
+          } catch {
+            setE2eStatus("failed");
+          }
         }
         return;
       }
@@ -156,16 +146,34 @@ export default function ChatPage() {
 
     chatSocket.connect(chatName, session.token);
 
+    fetchParticipants(chatName, session.token)
+      .then(async (participants) => {
+        const peer = participants.find(
+          (p) => p.participantId !== session.participantId,
+        );
+        if (peer?.publicKey && !e2eReadyRef.current) {
+          setE2eStatus("deriving");
+          try {
+            await encryptionService.deriveSharedKeyFromString(peer.publicKey);
+            e2eReadyRef.current = true;
+            setE2eStatus("ready");
+          } catch {
+            setE2eStatus("failed");
+          }
+        }
+      })
+      .catch(() => {});
+
     return () => {
       unsubConnection();
       unsubMessage();
       chatSocket.disconnect();
       e2eReadyRef.current = false;
-      encryptionService.reset();
+      setE2eStatus("pending");
+      encryptionService.resetSharedKey();
     };
   }, [session, chatName]);
 
-  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -210,7 +218,7 @@ export default function ChatPage() {
         timestamp,
       });
     }
-
+    console.log("Payload:", payload);
     chatSocket.send(payload);
     setInputValue("");
     inputRef.current?.focus();
@@ -241,24 +249,11 @@ export default function ChatPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge
-            variant={e2eReady ? "default" : "outline"}
-            className="gap-1 text-xs"
-          >
-            <Lock className="size-3" />
-            {e2eReady ? "E2E Active" : "E2E Pending"}
-          </Badge>
           <Badge variant="secondary" className="gap-1 text-xs">
             <Clock className="size-3" />
             2h
           </Badge>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            {isConnected ? (
-              <Wifi className="size-3 text-green-500" />
-            ) : (
-              <WifiOff className="size-3 text-destructive" />
-            )}
-          </div>
+          <ConnectionStatus isConnected={isConnected} e2eStatus={e2eStatus} />
           <ModeToggle />
         </div>
       </header>

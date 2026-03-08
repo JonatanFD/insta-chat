@@ -9,7 +9,14 @@ class ChatSocketService {
   private connectionHandlers = new Set<ConnectionHandler>();
 
   connect(chatName: string, token: string): void {
-    if (this.ws?.readyState === WebSocket.OPEN) return;
+    if (this.ws) {
+      this.ws.onopen = null;
+      this.ws.onclose = null;
+      this.ws.onerror = null;
+      this.ws.onmessage = null;
+      this.ws.close();
+      this.ws = null;
+    }
 
     const url = `${WS_BASE}/${encodeURIComponent(chatName)}?token=${encodeURIComponent(token)}`;
     this.ws = new WebSocket(url);
@@ -17,15 +24,12 @@ class ChatSocketService {
     this.ws.onopen = () => {
       this.connectionHandlers.forEach((h) => h(true));
     };
-
     this.ws.onclose = () => {
       this.connectionHandlers.forEach((h) => h(false));
     };
-
     this.ws.onerror = () => {
       this.connectionHandlers.forEach((h) => h(false));
     };
-
     this.ws.onmessage = (event: MessageEvent) => {
       const data =
         typeof event.data === "string" ? event.data : String(event.data);
@@ -35,6 +39,10 @@ class ChatSocketService {
 
   disconnect(): void {
     if (this.ws) {
+      this.ws.onopen = null;
+      this.ws.onclose = null;
+      this.ws.onerror = null;
+      this.ws.onmessage = null;
       this.ws.close();
       this.ws = null;
     }
