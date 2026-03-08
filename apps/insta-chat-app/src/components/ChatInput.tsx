@@ -1,11 +1,20 @@
-import { useRef, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { ArrowUp } from "lucide-react";
+import { Field } from "@/components/ui/field";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { ArrowUp } from "lucide-react";
+
+const formSchema = z.object({
+  message: z.string().min(1),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface ChatInputProps {
   onSend: (value: string) => void;
@@ -13,50 +22,57 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ onSend, disabled }: ChatInputProps) {
-  const [value, setValue] = useState("");
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { message: "" },
+  });
 
-  const handleSend = () => {
-    const content = value.trim();
-    if (!content) return;
-    onSend(content);
-    setValue("");
-    ref.current?.focus();
-  };
+  function onSubmit(data: FormValues) {
+    onSend(data.message.trim());
+    form.reset();
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      form.handleSubmit(onSubmit)();
     }
   };
 
   return (
     <div className="p-4">
       <div className="mx-auto max-w-2xl">
-        <InputGroup className="rounded-2xl border bg-background shadow-sm">
-          <InputGroupTextarea
-            ref={ref}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Message..."
-            rows={1}
-            className="min-h-[44px] max-h-36 resize-none border-0 shadow-none bg-transparent px-4 py-3 focus-visible:ring-0 text-sm"
-            disabled={disabled}
-            autoFocus
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <Controller
+            name="message"
+            control={form.control}
+            render={({ field }) => (
+              <Field>
+                <InputGroup className="rounded-2xl border bg-background shadow-sm">
+                  <InputGroupTextarea
+                    {...field}
+                    placeholder="Message..."
+                    rows={1}
+                    className="min-h-[44px] max-h-36 resize-none border-0 shadow-none bg-transparent px-4 py-3 focus-visible:ring-0 text-sm"
+                    onKeyDown={handleKeyDown}
+                    disabled={disabled}
+                    autoFocus
+                  />
+                  <InputGroupAddon align="block-end" className="p-2">
+                    <Button
+                      type="submit"
+                      size="icon"
+                      disabled={!form.watch("message").trim() || disabled}
+                      className="size-8 rounded-xl ml-auto"
+                    >
+                      <ArrowUp className="size-4" />
+                    </Button>
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
+            )}
           />
-          <InputGroupAddon align="block-end" className="p-2">
-            <Button
-              size="icon"
-              onClick={handleSend}
-              disabled={!value.trim() || disabled}
-              className="size-8 rounded-xl"
-            >
-              <ArrowUp className="size-4" />
-            </Button>
-          </InputGroupAddon>
-        </InputGroup>
+        </form>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Enter to send · Shift+Enter for new line
         </p>
