@@ -19,8 +19,9 @@ public class ChatRouter {
     @Bean
     public RouterFunction<ServerResponse> chatRoutes() {
         return RouterFunctions.route()
-            .POST("/api/chats/{chatName}/join", chatHandler::joinToChat)
-            .POST("/api/chats", chatHandler::createChat)
-            .build();
+                .POST("/api/chats/{chatName}/join", chatHandler::joinToChat)
+                .DELETE("/api/chats/{chatName}/leave", chatHandler::joinToChat)
+                .POST("/api/chats", chatHandler::createChat)
+                .build();
     }
 }

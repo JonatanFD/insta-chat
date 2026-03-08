@@ -53,4 +53,8 @@ public class ParticipantService {
     public Flux<Participant> fetchAllParticipants(String chatName) {
         return participantRepository.getParticipantsByChatName(chatName);
     }
+
+    public Mono<String> removeParticipant(String participantId) {
+        return participantRepository.removeParticipant(participantId);
+    }
 }
