@@ -39,8 +39,6 @@ public class ChatWebSocketHandler implements WebSocketHandler {
 
     Sinks.Many<String> room = registry.getOrCreateRoom(chatName);
 
-    // Publicar ANTES de construir el flux de send,
-    // así el nuevo participante no recibe su propio joined
     registry.publish(chatName, participantName + " Has joined");
 
     Mono<Void> receive = session
@@ -49,12 +47,10 @@ public class ChatWebSocketHandler implements WebSocketHandler {
       .doOnNext(msg -> registry.publish(chatName, msg))
       .then();
 
-    // Skipear el primer mensaje si es el "joined" propio — alternativa más robusta:
     Mono<Void> send = session.send(
       room
         .asFlux()
         .filter(msg -> {
-          // El propio participante no ve su propio sistema joined/left
           if (msg.equals(participantName + " Has joined")) return false;
           if (msg.equals(participantName + " Has left")) return false;
           return true;
