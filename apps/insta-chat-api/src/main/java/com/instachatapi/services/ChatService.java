@@ -101,8 +101,6 @@ public class ChatService {
                         participantService
                                 .removeParticipant(participantId)
                                 .thenReturn("Left the chat successfully")
-                ).thenReturn(
-                        null
-                );
+                ).then();
     }
 }
