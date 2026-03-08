@@ -1,0 +1,27 @@
+info:
+  name: join A
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{API_URL}}/chats/{{CHAT_NAME}}/join"
+  body:
+    type: json
+    data: |-
+      {
+        "password": "{{CHAT_PASS}}",
+        "publicKey": "SomeKey"
+      }
+  auth: inherit
+
+runtime:
+  variables:
+    - name: CHAT_NAME
+      value: Demo
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

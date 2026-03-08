@@ -1,0 +1,27 @@
+info:
+  name: create chat
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{API_URL}}/chats"
+  body:
+    type: json
+    data: |-
+      {
+        "chatName": "{{CHAT_NAME}}",
+        "password": "{{CHAT_PASS}}"
+      }
+  auth: inherit
+
+runtime:
+  variables:
+    - name: API_URL
+      value: http://localhost:8080/api
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

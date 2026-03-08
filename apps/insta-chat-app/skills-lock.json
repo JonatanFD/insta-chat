@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": {
+    "assistant-ui": {
+      "source": "assistant-ui/skills",
+      "sourceType": "github",
+      "computedHash": "cfce3ce8c4c2da38f0fc8e881af677efa8166d379862541f79c54e66f1a599d5"
+    },
+    "primitives": {
+      "source": "assistant-ui/skills",
+      "sourceType": "github",
+      "computedHash": "acdb5ddbdd066abf513a3f729198cee8ad79d03b18ba3329e609658d88bc09ee"
+    },
+    "setup": {
+      "source": "assistant-ui/skills",
+      "sourceType": "github",
+      "computedHash": "283c7cbc08cbc1a3b58307083f505a24fcc8b5e5621608d6e1fb88034b1afce0"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "3462ec83f862abb2d532953df33a4dbf87f4616849da5d4b5cc7c13601aaf997"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
+    }
+  }
+}

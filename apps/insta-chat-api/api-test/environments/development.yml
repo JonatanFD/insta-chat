@@ -1,0 +1,10 @@
+name: development
+variables:
+  - name: API_URL
+    value: http://localhost:8080/api
+  - name: CHAT_NAME
+    value: Demo
+  - name: CHAT_PASS
+    value: SomePass
+  - name: A_JWT
+    value: eyJhbGciOiJIUzI1NiJ9.eyJwYXJ0aWNpcGFudElkIjoiOTRkZGU5MzktMDAwZC00Y2RmLTgzYjEtZGQwNGVhYTIzYzA3IiwiY2hhdE5hbWUiOiJEZW1vIiwiaWF0IjoxNzcyNTIwNTY2fQ.QdUyOQjNqp1SXzPsloz03DOUNocaZwCScLn2DSvJmKg
