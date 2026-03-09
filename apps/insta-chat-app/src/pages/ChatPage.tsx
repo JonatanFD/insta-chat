@@ -213,6 +213,7 @@ export default function ChatPage() {
         timestamp,
       });
     }
+    console.log("Payload sent", payload);
     chatSocket.send(payload);
   };
 

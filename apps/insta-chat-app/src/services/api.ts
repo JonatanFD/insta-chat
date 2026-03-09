@@ -74,3 +74,17 @@ export async function fetchParticipants(
   console.log("Current Participants:", data); // ← log DESPUÉS de parsear
   return data;
 }
+
+export async function leaveChat(chatName: string, participantId: string) {
+  const res = await fetch(
+    `${API_BASE}/chats/${encodeURIComponent(chatName)}/participants/${participantId}`,
+    {
+      method: "DELETE",
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to leave chat (${res.status})`);
+  }
+}
