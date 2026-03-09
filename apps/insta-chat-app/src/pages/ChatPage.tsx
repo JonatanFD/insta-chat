@@ -1,26 +1,22 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import {
-  ArrowLeft,
-  Clock,
-  Lock,
-  MessageSquare,
-  Send,
-  Wifi,
-  WifiOff,
-} from "lucide-react";
+import { ArrowLeft, Clock, MessageSquare } from "lucide-react";
 import { chatSocket } from "@/services/socket";
 import { encryptionService } from "@/services/encryption";
 import { fetchParticipants } from "@/services/api";
 import { useChatStore } from "@/stores/chat";
+import { ModeToggle } from "@/components/mode-toggle";
+import {
+  ConnectionStatus,
+  type E2EStatus,
+} from "@/components/ConnectionStatus";
+import { ChatInput } from "@/components/ChatInput";
 
-// Regex to detect server system messages like "BraveLion Has joined" / "BraveLion Has left"
 const SYSTEM_MSG_REGEX = /^.+ Has (joined|left)$/;
 
 interface ChatMessage {
@@ -54,87 +50,55 @@ export default function ChatPage() {
   const session = useChatStore((s) => s.session);
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
-  const [inputValue, setInputValue] = useState("");
   const [isConnected, setIsConnected] = useState(false);
-  const [e2eReady, setE2eReady] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [e2eStatus, setE2eStatus] = useState<E2EStatus>("pending");
 
-  // Redirect if no session
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const e2eReadyRef = useRef(false);
+  const sessionRef = useRef(session);
+
   useEffect(() => {
-    if (!session) {
-      navigate("/join", { replace: true });
-    }
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) navigate("/join", { replace: true });
   }, [session, navigate]);
 
-  // Fetch participants and derive E2E shared key
-  useEffect(() => {
-    if (!session || !chatName) return;
-
-    let cancelled = false;
-
-    const setupE2E = async () => {
-      try {
-        const participants = await fetchParticipants(chatName, session.token);
-        const peer = participants.find(
-          (p) => p.participantId !== session.participantId
-        );
-
-        if (peer && peer.publicKey && !cancelled) {
-          await encryptionService.deriveSharedKeyFromString(peer.publicKey);
-          setE2eReady(true);
-        }
-      } catch {
-        // Peer may not have joined yet -- we'll retry on system messages
-      }
-    };
-
-    setupE2E();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [session, chatName]);
-
-  // Try to establish E2E when a new user joins
-  const tryEstablishE2E = useCallback(async () => {
-    if (e2eReady || !session || !chatName) return;
-    try {
-      const participants = await fetchParticipants(chatName, session.token);
-      const peer = participants.find(
-        (p) => p.participantId !== session.participantId
-      );
-      if (peer?.publicKey) {
-        await encryptionService.deriveSharedKeyFromString(peer.publicKey);
-        setE2eReady(true);
-      }
-    } catch {
-      // ignore
-    }
-  }, [e2eReady, session, chatName]);
-
-  // Connect WebSocket
   useEffect(() => {
     if (!session || !chatName) return;
 
     const unsubConnection = chatSocket.onConnectionChange(setIsConnected);
 
     const unsubMessage = chatSocket.onMessage(async (raw: string) => {
-      // Check if it's a system message from the server
       if (SYSTEM_MSG_REGEX.test(raw)) {
         setMessages((prev) => [
           ...prev,
           { type: "system", content: raw, timestamp: Date.now() },
         ]);
 
-        // If someone joined, try to establish E2E
-        if (raw.endsWith("Has joined")) {
-          tryEstablishE2E();
+        if (raw.endsWith("Has joined") && !e2eReadyRef.current) {
+          setE2eStatus("deriving");
+          try {
+            const participants = await fetchParticipants(
+              chatName,
+              sessionRef.current!.token,
+            );
+            const peer = participants.find(
+              (p) => p.participantId !== sessionRef.current!.participantId,
+            );
+            if (peer?.publicKey) {
+              await encryptionService.deriveSharedKeyFromString(peer.publicKey);
+              e2eReadyRef.current = true;
+              setE2eStatus("ready");
+            }
+          } catch {
+            setE2eStatus("failed");
+          }
         }
         return;
       }
 
-      // Try to parse as our JSON chat message format
       try {
         const parsed = JSON.parse(raw) as {
           senderId: string;
@@ -144,12 +108,10 @@ export default function ChatPage() {
           timestamp: number;
         };
 
-        // Skip our own messages (already shown optimistically)
-        if (parsed.senderId === session.participantId) return;
+        if (parsed.senderId === sessionRef.current?.participantId) return;
 
         let decryptedContent = parsed.content;
 
-        // Decrypt if E2E is ready
         if (encryptionService.hasSharedKey) {
           try {
             decryptedContent = await encryptionService.decrypt({
@@ -173,7 +135,6 @@ export default function ChatPage() {
           },
         ]);
       } catch {
-        // Unknown format -- show as system message
         setMessages((prev) => [
           ...prev,
           { type: "system", content: raw, timestamp: Date.now() },
@@ -183,27 +144,44 @@ export default function ChatPage() {
 
     chatSocket.connect(chatName, session.token);
 
+    fetchParticipants(chatName, session.token)
+      .then(async (participants) => {
+        const peer = participants.find(
+          (p) => p.participantId !== session.participantId,
+        );
+        if (peer?.publicKey && !e2eReadyRef.current) {
+          setE2eStatus("deriving");
+          try {
+            await encryptionService.deriveSharedKeyFromString(peer.publicKey);
+            e2eReadyRef.current = true;
+            setE2eStatus("ready");
+          } catch {
+            setE2eStatus("failed");
+          }
+        }
+      })
+      .catch(() => {});
+
     return () => {
       unsubConnection();
       unsubMessage();
       chatSocket.disconnect();
+      e2eReadyRef.current = false;
+      setE2eStatus("pending");
+      encryptionService.resetSharedKey();
     };
-  }, [session, chatName, tryEstablishE2E]);
+  }, [session, chatName]);
 
-  // Auto-scroll on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  const handleSend = async () => {
-    const content = inputValue.trim();
-    if (!content || !session) return;
-
+  const handleSend = async (content: string) => {
+    if (!session) return;
     const timestamp = Date.now();
 
-    // Show message optimistically (plaintext for ourselves)
     setMessages((prev) => [
       ...prev,
       {
@@ -216,9 +194,7 @@ export default function ChatPage() {
       },
     ]);
 
-    // Encrypt if E2E is ready, otherwise send plaintext
     let payload: string;
-
     if (encryptionService.hasSharedKey) {
       const encrypted = await encryptionService.encrypt(content);
       payload = JSON.stringify({
@@ -237,24 +213,14 @@ export default function ChatPage() {
         timestamp,
       });
     }
-
+    console.log("Payload sent", payload);
     chatSocket.send(payload);
-    setInputValue("");
-    inputRef.current?.focus();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
   };
 
   if (!session) return null;
 
   return (
     <div className="flex h-screen flex-col">
-      {/* Header */}
       <header className="flex items-center justify-between border-b px-4 py-2">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon-sm" asChild>
@@ -269,31 +235,17 @@ export default function ChatPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge
-            variant={e2eReady ? "default" : "outline"}
-            className="gap-1 text-xs"
-          >
-            <Lock className="size-3" />
-            {e2eReady ? "E2E Active" : "E2E Pending"}
-          </Badge>
           <Badge variant="secondary" className="gap-1 text-xs">
             <Clock className="size-3" />
             2h
           </Badge>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            {isConnected ? (
-              <Wifi className="size-3 text-green-500" />
-            ) : (
-              <WifiOff className="size-3 text-destructive" />
-            )}
-          </div>
+          <ConnectionStatus isConnected={isConnected} e2eStatus={e2eStatus} />
+          <ModeToggle />
         </div>
       </header>
 
-      {/* Messages area */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4 overflow-auto" ref={scrollRef}>
         <div className="mx-auto max-w-2xl space-y-4">
-          {/* Welcome system message */}
           <div className="flex justify-center">
             <div className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
               Messages are end-to-end encrypted. This room will auto-delete in 2
@@ -317,13 +269,13 @@ export default function ChatPage() {
                     : "flex-row"
                 }`}
               >
-                {msg.senderId !== session.participantId ? (
+                {msg.senderId !== session.participantId && (
                   <Avatar className="size-7">
                     <AvatarFallback className="text-xs">
                       {msg.senderName.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                ) : null}
+                )}
                 <div
                   className={`max-w-[70%] rounded-2xl px-3.5 py-2 text-sm ${
                     msg.senderId === session.participantId
@@ -331,11 +283,11 @@ export default function ChatPage() {
                       : "bg-muted"
                   }`}
                 >
-                  {msg.senderId !== session.participantId ? (
+                  {msg.senderId !== session.participantId && (
                     <p className="mb-0.5 text-xs font-medium opacity-70">
                       {msg.senderName}
                     </p>
-                  ) : null}
+                  )}
                   <p className="break-words">{msg.content}</p>
                   <p
                     className={`mt-1 text-[10px] ${
@@ -348,34 +300,14 @@ export default function ChatPage() {
                   </p>
                 </div>
               </div>
-            )
+            ),
           )}
         </div>
       </ScrollArea>
 
       <Separator />
 
-      {/* Composer */}
-      <div className="p-4">
-        <div className="mx-auto flex max-w-2xl items-center gap-2">
-          <Input
-            ref={inputRef}
-            placeholder="Type a message..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="flex-1"
-            autoFocus
-          />
-          <Button
-            size="icon"
-            onClick={handleSend}
-            disabled={!inputValue.trim()}
-          >
-            <Send className="size-4" />
-          </Button>
-        </div>
-      </div>
+      <ChatInput onSend={handleSend} disabled={!isConnected} />
     </div>
   );
 }

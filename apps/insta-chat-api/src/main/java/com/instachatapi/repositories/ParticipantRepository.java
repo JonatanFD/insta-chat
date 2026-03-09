@@ -104,4 +104,22 @@ public class ParticipantRepository {
                 )
             );
     }
+
+    public Mono<String> removeParticipant(String participantId) {
+        String participantKey = buildParticipantKey(participantId);
+
+        return hashOps
+            .entries(participantKey)
+            .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+            .filter(map -> !map.isEmpty())
+            .flatMap(map -> {
+                String chatName = (String) map.get("chatName");
+                String chatKey = buildChatParticipantsKey(chatName);
+
+                return setOps
+                    .remove(chatKey, participantId)
+                    .then(redisTemplate.delete(participantKey))
+                    .thenReturn(chatName);
+            });
+    }
 }

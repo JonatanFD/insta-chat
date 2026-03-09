@@ -2,6 +2,7 @@ package com.instachatapi.handlers;
 
 import com.instachatapi.handlers.requests.CreateChatRequest;
 import com.instachatapi.handlers.requests.JoinToChatRequest;
+import com.instachatapi.handlers.requests.LeaveChaRequest;
 import com.instachatapi.services.ChatService;
 import java.time.Instant;
 import org.springframework.stereotype.Component;
@@ -41,6 +42,20 @@ public class ChatHandler {
                     request.pathVariable("chatName"),
                     req.password(),
                     req.publicKey()
+                )
+            )
+            .flatMap(response ->
+                ServerResponse.status(200).bodyValue(response)
+            );
+    }
+
+    public Mono<ServerResponse> leaveChat(ServerRequest request) {
+        return request
+            .bodyToMono(LeaveChaRequest.class)
+            .flatMap(req ->
+                chatService.leaveChat(
+                    request.pathVariable("chatName"),
+                    req.participantId()
                 )
             )
             .flatMap(response ->

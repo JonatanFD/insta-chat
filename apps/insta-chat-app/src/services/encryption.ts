@@ -28,7 +28,6 @@ export interface EncryptedPayload {
 class EncryptionService {
   private keyPair: CryptoKeyPair | null = null;
   private sharedKey: CryptoKey | null = null;
-
   /**
    * Generate a new ECDH key pair.
    * Returns the public key as a JSON-stringified JWK, ready to send to the server.
@@ -56,7 +55,7 @@ class EncryptionService {
       jwk,
       ALGORITHM,
       true,
-      []
+      [],
     );
 
     this.sharedKey = await crypto.subtle.deriveKey(
@@ -64,13 +63,15 @@ class EncryptionService {
       this.keyPair.privateKey,
       { name: AES_ALGORITHM, length: AES_KEY_LENGTH },
       false,
-      ["encrypt", "decrypt"]
+      ["encrypt", "decrypt"],
     );
   }
 
   async encrypt(plaintext: string): Promise<EncryptedPayload> {
     if (!this.sharedKey) {
-      throw new Error("Shared key not derived. Call deriveSharedKeyFromString() first.");
+      throw new Error(
+        "Shared key not derived. Call deriveSharedKeyFromString() first.",
+      );
     }
 
     const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -79,7 +80,7 @@ class EncryptionService {
     const cipherBuffer = await crypto.subtle.encrypt(
       { name: AES_ALGORITHM, iv },
       this.sharedKey,
-      encoded
+      encoded,
     );
 
     return {
@@ -90,7 +91,9 @@ class EncryptionService {
 
   async decrypt(payload: EncryptedPayload): Promise<string> {
     if (!this.sharedKey) {
-      throw new Error("Shared key not derived. Call deriveSharedKeyFromString() first.");
+      throw new Error(
+        "Shared key not derived. Call deriveSharedKeyFromString() first.",
+      );
     }
 
     const iv = base64ToBuffer(payload.iv);
@@ -99,7 +102,7 @@ class EncryptionService {
     const decryptedBuffer = await crypto.subtle.decrypt(
       { name: AES_ALGORITHM, iv: iv as BufferSource },
       this.sharedKey,
-      ciphertext as BufferSource
+      ciphertext as BufferSource,
     );
 
     return new TextDecoder().decode(decryptedBuffer);
@@ -112,6 +115,10 @@ class EncryptionService {
 
   get hasKeyPair(): boolean {
     return this.keyPair !== null;
+  }
+
+  resetSharedKey(): void {
+    this.sharedKey = null;
   }
 
   get hasSharedKey(): boolean {

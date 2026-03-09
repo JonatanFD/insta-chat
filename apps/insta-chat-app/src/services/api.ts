@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8080/api";
+const API_BASE = import.meta.env.VITE_PUBLIC_API_BASE;
 
 export interface Chat {
   chatName: string;
@@ -16,7 +16,7 @@ export interface Participant {
 
 export async function createChat(
   chatName: string,
-  password: string
+  password: string,
 ): Promise<Chat> {
   const res = await fetch(`${API_BASE}/chats`, {
     method: "POST",
@@ -35,13 +35,16 @@ export async function createChat(
 export async function joinChat(
   chatName: string,
   password: string,
-  publicKey: string
+  publicKey: string,
 ): Promise<string> {
-  const res = await fetch(`${API_BASE}/chats/${encodeURIComponent(chatName)}/join`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password, publicKey }),
-  });
+  const res = await fetch(
+    `${API_BASE}/chats/${encodeURIComponent(chatName)}/join`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, publicKey }),
+    },
+  );
 
   if (!res.ok) {
     const text = await res.text();
@@ -51,16 +54,15 @@ export async function joinChat(
   // Response is a raw JWT string
   return res.text();
 }
-
 export async function fetchParticipants(
   chatName: string,
-  token: string
+  token: string,
 ): Promise<Participant[]> {
   const res = await fetch(
     `${API_BASE}/chats/${encodeURIComponent(chatName)}/participants`,
     {
       headers: { Authorization: `Bearer ${token}` },
-    }
+    },
   );
 
   if (!res.ok) {
@@ -68,5 +70,21 @@ export async function fetchParticipants(
     throw new Error(text || `Failed to fetch participants (${res.status})`);
   }
 
-  return res.json();
+  const data = await res.json();
+  console.log("Current Participants:", data); // ← log DESPUÉS de parsear
+  return data;
+}
+
+export async function leaveChat(chatName: string, participantId: string) {
+  const res = await fetch(
+    `${API_BASE}/chats/${encodeURIComponent(chatName)}/participants/${participantId}`,
+    {
+      method: "DELETE",
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to leave chat (${res.status})`);
+  }
 }
