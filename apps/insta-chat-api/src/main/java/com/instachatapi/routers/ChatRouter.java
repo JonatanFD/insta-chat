@@ -20,7 +20,7 @@ public class ChatRouter {
     public RouterFunction<ServerResponse> chatRoutes() {
         return RouterFunctions.route()
                 .POST("/api/chats/{chatName}/join", chatHandler::joinToChat)
-                .DELETE("/api/chats/{chatName}/leave", chatHandler::joinToChat)
+                .DELETE("/api/chats/{chatName}/leave", chatHandler::leaveChat)
                 .POST("/api/chats", chatHandler::createChat)
                 .build();
     }
