@@ -21,22 +21,24 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityWebFilterChain springSecurityFilterChain(
-        ServerHttpSecurity http
-    ) {
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         return http
-            .csrf(ServerHttpSecurity.CsrfSpec::disable)
-            .cors(ServerHttpSecurity.CorsSpec::disable)
-            .authorizeExchange(exchanges ->
-                exchanges
-                    .pathMatchers("/api/chats/**")
-                    .permitAll()
-                    .pathMatchers("/ws/chats/**")
-                    .permitAll()
-                    .anyExchange()
-                    .authenticated()
-            )
-            .build();
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .cors(ServerHttpSecurity.CorsSpec::disable)
+                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+                .authorizeExchange(exchanges ->
+                        exchanges
+                                .pathMatchers(
+                                        "/api/chats/**",
+                                        "/ws/chats/**",
+                                        "/v3/api-docs/**",
+                                        "/swagger-ui/**",
+                                        "/swagger-ui.html"
+                                ).permitAll()
+                                .anyExchange().permitAll()
+                )
+                .build();
     }
 
     @Bean
