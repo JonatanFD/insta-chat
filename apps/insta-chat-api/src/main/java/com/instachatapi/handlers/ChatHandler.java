@@ -31,7 +31,8 @@ public class ChatHandler {
             )
             .flatMap(response ->
                 ServerResponse.status(201).bodyValue(response)
-            );
+            )
+            .onErrorResume(GlobalErrorHandler::handleError);
     }
 
     public Mono<ServerResponse> joinToChat(ServerRequest request) {
@@ -46,7 +47,8 @@ public class ChatHandler {
             )
             .flatMap(response ->
                 ServerResponse.status(200).bodyValue(response)
-            );
+            )
+            .onErrorResume(GlobalErrorHandler::handleError);
     }
 
     public Mono<ServerResponse> leaveChat(ServerRequest request) {
@@ -58,8 +60,7 @@ public class ChatHandler {
                     req.participantId()
                 )
             )
-            .flatMap(response ->
-                ServerResponse.status(200).bodyValue(response)
-            );
+            .then(ServerResponse.ok().bodyValue("Left the chat successfully"))
+            .onErrorResume(GlobalErrorHandler::handleError);
     }
 }

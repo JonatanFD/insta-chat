@@ -2,6 +2,7 @@ package com.instachatapi.services;
 
 import com.instachatapi.models.Participant;
 import com.instachatapi.repositories.ParticipantRepository;
+import com.instachatapi.services.exceptions.ChatFullException;
 import com.instachatapi.shared.UserNameFactory;
 import java.time.Instant;
 import java.util.UUID;
@@ -28,7 +29,7 @@ public class ParticipantService {
             .flatMap(count -> {
                 if (count >= 2) {
                     return Mono.error(
-                        new IllegalStateException("Chat is full")
+                        new ChatFullException("Chat is full")
                     );
                 }
 
