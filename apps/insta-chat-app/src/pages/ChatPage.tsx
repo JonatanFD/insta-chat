@@ -30,6 +30,7 @@ import { createLogger } from "@/lib/logger";
 const logger = createLogger("ChatPage");
 
 const SYSTEM_MSG_REGEX = /^.+ Has (joined|left)$/;
+const TYPING_DOTS = ["Writing.", "Writing..", "Writing..."];
 
 interface ChatMessage {
     type: "chat";
@@ -64,6 +65,39 @@ function makeSystemMsg(content: string): SystemMessage {
         timestamp: Date.now(),
     };
 }
+
+interface TypingBubbleProps {
+    senderName: string;
+}
+
+const TypingBubble = memo(({ senderName }: TypingBubbleProps) => {
+    const [dotIndex, setDotIndex] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setDotIndex((prev) => (prev + 1) % TYPING_DOTS.length);
+        }, 400);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="flex items-end gap-2">
+            <Avatar className="size-7">
+                <AvatarFallback className="text-xs">
+                    {senderName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+            </Avatar>
+            <div className="max-w-[70%] rounded-2xl px-3.5 py-2 text-sm bg-muted">
+                <p className="mb-0.5 text-xs font-medium opacity-70">
+                    {senderName}
+                </p>
+                <p className="break-words text-muted-foreground italic">
+                    {TYPING_DOTS[dotIndex]}
+                </p>
+            </div>
+        </div>
+    );
+});
 
 const SystemBubble = memo(({ content }: { content: string }) => (
     <div className="flex justify-center">
@@ -221,8 +255,40 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<DisplayMessage[]>([]);
     const [isConnected, setIsConnected] = useState(false);
     const [e2eStatus, setE2eStatus] = useState<E2EStatus>("pending");
+    const [typingUsers, setTypingUsers] = useState<Map<string, string>>(
+        new Map(),
+    );
+    const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+        new Map(),
+    );
 
     const bottomRef = useRef<HTMLDivElement>(null);
+
+    const clearTypingUser = useCallback((senderId: string) => {
+        const timer = typingTimers.current.get(senderId);
+        if (timer !== undefined) clearTimeout(timer);
+        typingTimers.current.delete(senderId);
+        setTypingUsers((prev) => {
+            const next = new Map(prev);
+            next.delete(senderId);
+            return next;
+        });
+    }, []);
+
+    const setTypingUser = useCallback(
+        (senderId: string, senderName: string) => {
+            const existing = typingTimers.current.get(senderId);
+            if (existing !== undefined) clearTimeout(existing);
+
+            setTypingUsers((prev) => new Map(prev).set(senderId, senderName));
+
+            const timer = setTimeout(() => {
+                clearTypingUser(senderId);
+            }, 300);
+            typingTimers.current.set(senderId, timer);
+        },
+        [clearTypingUser],
+    );
     const e2eReadyRef = useRef(false);
     const sessionRef = useRef(session);
 
@@ -312,12 +378,20 @@ export default function ChatPage() {
 
             try {
                 const parsed = JSON.parse(raw) as {
+                    type?: string;
                     senderId: string;
                     senderName: string;
                     content: string;
                     iv: string;
                     timestamp: number;
                 };
+
+                if (parsed.type === "typing") {
+                    if (parsed.senderId !== sessionRef.current?.participantId) {
+                        setTypingUser(parsed.senderId, parsed.senderName);
+                    }
+                    return;
+                }
 
                 if (parsed.senderId === sessionRef.current?.participantId)
                     return;
@@ -346,6 +420,8 @@ export default function ChatPage() {
                         });
                     }
                 }
+
+                clearTypingUser(parsed.senderId);
 
                 setMessages((prev) => [
                     ...prev,
@@ -376,11 +452,28 @@ export default function ChatPage() {
             setE2eStatus("pending");
             encryptionService.resetSharedKey();
         };
-    }, [chatName, sessionMatchesRoom, session, deriveKey, reconnectStatus]);
+    }, [
+        chatName,
+        sessionMatchesRoom,
+        session,
+        deriveKey,
+        reconnectStatus,
+        clearTypingUser,
+        setTypingUser,
+    ]);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    const handleTyping = useCallback(() => {
+        const currentSession = sessionRef.current;
+        if (!currentSession) return;
+        chatSocket.sendTyping(
+            currentSession.participantId,
+            currentSession.participantName,
+        );
+    }, []);
 
     const handleSend = useCallback(async (content: string) => {
         const currentSession = sessionRef.current;
@@ -543,7 +636,21 @@ export default function ChatPage() {
 
             <Separator />
 
-            <ChatInput onSend={handleSend} disabled={!isConnected} />
+            {typingUsers.size > 0 && (
+                <div className="px-4 pb-1">
+                    <div className="mx-auto max-w-2xl space-y-2">
+                        {[...typingUsers.entries()].map(([id, name]) => (
+                            <TypingBubble key={id} senderName={name} />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <ChatInput
+                onSend={handleSend}
+                onTyping={handleTyping}
+                disabled={!isConnected}
+            />
         </div>
     );
 }

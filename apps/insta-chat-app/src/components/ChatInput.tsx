@@ -1,5 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRef, useCallback } from "react";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -18,16 +19,56 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface ChatInputProps {
     onSend: (value: string) => void;
+    onTyping?: () => void;
+    onStopTyping?: () => void;
     disabled?: boolean;
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({
+    onSend,
+    onTyping,
+    onStopTyping,
+    disabled,
+}: ChatInputProps) {
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: { message: "" },
     });
 
+    const stopTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isTyping = useRef(false);
+
+    const clearStopTypingTimer = useCallback(() => {
+        if (stopTypingTimer.current !== null) {
+            clearTimeout(stopTypingTimer.current);
+            stopTypingTimer.current = null;
+        }
+    }, []);
+
+    const scheduleStopTyping = useCallback(() => {
+        clearStopTypingTimer();
+        stopTypingTimer.current = setTimeout(() => {
+            if (isTyping.current) {
+                isTyping.current = false;
+                onStopTyping?.();
+            }
+        }, 300);
+    }, [clearStopTypingTimer, onStopTyping]);
+
+    const handleChange = useCallback(() => {
+        if (!isTyping.current) {
+            isTyping.current = true;
+            onTyping?.();
+        }
+        scheduleStopTyping();
+    }, [onTyping, scheduleStopTyping]);
+
     function onSubmit(data: FormValues) {
+        clearStopTypingTimer();
+        if (isTyping.current) {
+            isTyping.current = false;
+            onStopTyping?.();
+        }
         onSend(data.message.trim());
         form.reset();
     }
@@ -55,6 +96,10 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
                                         rows={1}
                                         className="min-h-[44px] max-h-36 resize-none border-0 shadow-none bg-transparent px-4 py-3 focus-visible:ring-0 text-sm"
                                         onKeyDown={handleKeyDown}
+                                        onChange={(e) => {
+                                            field.onChange(e);
+                                            handleChange();
+                                        }}
                                         disabled={disabled}
                                         autoFocus
                                     />

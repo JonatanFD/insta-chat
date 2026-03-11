@@ -56,6 +56,14 @@ class ChatSocketService {
         }
     }
 
+    sendTyping(senderId: string, senderName: string): void {
+        if (this.ws?.readyState === WebSocket.OPEN) {
+            this.ws.send(
+                JSON.stringify({ type: "typing", senderId, senderName }),
+            );
+        }
+    }
+
     onMessage(handler: MessageHandler): () => void {
         this.messageHandlers.add(handler);
         return () => {
