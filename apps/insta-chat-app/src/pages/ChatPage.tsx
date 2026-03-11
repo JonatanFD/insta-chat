@@ -31,6 +31,9 @@ const logger = createLogger("ChatPage");
 
 const SYSTEM_MSG_REGEX = /^.+ Has (joined|left)$/;
 const TYPING_DOTS = ["Writing.", "Writing..", "Writing..."];
+const TYPING_IDLE_HIDE_MS = 1500;
+
+// ─── Message types ────────────────────────────────────────────────────────────
 
 interface ChatMessage {
     type: "chat";
@@ -48,7 +51,17 @@ interface SystemMessage {
     timestamp: number;
 }
 
-type DisplayMessage = ChatMessage | SystemMessage;
+interface TypingMessage {
+    type: "typing";
+    id: string; // `typing-${senderId}` — always unique per sender
+    senderId: string;
+    senderName: string;
+    timestamp: number;
+}
+
+type DisplayMessage = ChatMessage | SystemMessage | TypingMessage;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatTime(timestamp: number): string {
     return new Date(timestamp).toLocaleTimeString([], {
@@ -65,6 +78,8 @@ function makeSystemMsg(content: string): SystemMessage {
         timestamp: Date.now(),
     };
 }
+
+// ─── Bubbles ──────────────────────────────────────────────────────────────────
 
 interface TypingBubbleProps {
     senderName: string;
@@ -255,79 +270,76 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<DisplayMessage[]>([]);
     const [isConnected, setIsConnected] = useState(false);
     const [e2eStatus, setE2eStatus] = useState<E2EStatus>("pending");
-    const [typingUsers, setTypingUsers] = useState<Map<string, string>>(
-        new Map(),
-    );
-    // auto-hide timer per sender (fires 1s after the last typing event)
+
+    // One timer per sender — auto-removes the typing bubble after idle
     const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
         new Map(),
     );
-    // timestamp (ms) of when each sender's bubble first appeared
-    const typingShownAt = useRef<Map<string, number>>(new Map());
-
-    const TYPING_MIN_DISPLAY_MS = 1000;
-    const TYPING_IDLE_HIDE_MS = 1500;
 
     const bottomRef = useRef<HTMLDivElement>(null);
 
-    const removeTypingUser = useCallback((senderId: string) => {
+    // ─── Typing bubble helpers ────────────────────────────────────────────────
+
+    /**
+     * Removes the typing bubble for a given sender from the message list
+     * and clears its idle timer.
+     */
+    const removeTypingMessage = useCallback((senderId: string) => {
         const timer = typingTimers.current.get(senderId);
         if (timer !== undefined) clearTimeout(timer);
         typingTimers.current.delete(senderId);
-        typingShownAt.current.delete(senderId);
-        setTypingUsers((prev) => {
-            const next = new Map(prev);
-            next.delete(senderId);
-            return next;
-        });
+
+        setMessages((prev) =>
+            prev.filter(
+                (msg) => !(msg.type === "typing" && msg.senderId === senderId),
+            ),
+        );
     }, []);
 
-    // Called when a real message arrives — hides the bubble immediately but
-    // never earlier than TYPING_MIN_DISPLAY_MS after it first appeared.
-    const clearTypingUser = useCallback(
-        (senderId: string) => {
-            const shownAt = typingShownAt.current.get(senderId);
-            if (shownAt === undefined) return; // bubble is not showing
-
-            const elapsed = Date.now() - shownAt;
-            const remaining = TYPING_MIN_DISPLAY_MS - elapsed;
-
-            if (remaining <= 0) {
-                removeTypingUser(senderId);
-            } else {
-                // Cancel the idle timer and replace it with a minimum-display one
-                const existing = typingTimers.current.get(senderId);
-                if (existing !== undefined) clearTimeout(existing);
-                const timer = setTimeout(
-                    () => removeTypingUser(senderId),
-                    remaining,
-                );
-                typingTimers.current.set(senderId, timer);
-            }
-        },
-        [removeTypingUser],
-    );
-
-    const setTypingUser = useCallback(
+    /**
+     * Inserts a typing bubble for a sender (if not already present) and
+     * resets the idle-hide timer. Each sender has exactly one bubble.
+     */
+    const upsertTypingMessage = useCallback(
         (senderId: string, senderName: string) => {
+            // Reset idle timer
             const existing = typingTimers.current.get(senderId);
             if (existing !== undefined) clearTimeout(existing);
 
-            // Record first-shown timestamp only when the bubble is new
-            if (!typingShownAt.current.has(senderId)) {
-                typingShownAt.current.set(senderId, Date.now());
-            }
-
-            setTypingUsers((prev) => new Map(prev).set(senderId, senderName));
-
-            // Auto-hide after 1s of no new typing events
-            const timer = setTimeout(() => {
-                removeTypingUser(senderId);
-            }, TYPING_IDLE_HIDE_MS);
+            const timer = setTimeout(
+                () => removeTypingMessage(senderId),
+                TYPING_IDLE_HIDE_MS,
+            );
             typingTimers.current.set(senderId, timer);
+
+            setMessages((prev) => {
+                // Bubble already in list — timer was reset above, no state change needed
+                if (
+                    prev.some(
+                        (msg) =>
+                            msg.type === "typing" && msg.senderId === senderId,
+                    )
+                ) {
+                    return prev;
+                }
+
+                return [
+                    ...prev,
+                    {
+                        type: "typing",
+                        id: `typing-${senderId}`,
+                        senderId,
+                        senderName,
+                        timestamp: Date.now(),
+                    } satisfies TypingMessage,
+                ];
+            });
         },
-        [removeTypingUser],
+        [removeTypingMessage],
     );
+
+    // ─── E2E key derivation ───────────────────────────────────────────────────
+
     const e2eReadyRef = useRef(false);
     const sessionRef = useRef(session);
 
@@ -387,8 +399,9 @@ export default function ChatPage() {
         }
     }, [chatName]);
 
+    // ─── Socket lifecycle ─────────────────────────────────────────────────────
+
     useEffect(() => {
-        // Only start the socket once we have a valid, matching session
         if (!sessionMatchesRoom || !session || reconnectStatus !== "idle")
             return;
 
@@ -425,13 +438,15 @@ export default function ChatPage() {
                     timestamp: number;
                 };
 
+                // ── Typing event ──────────────────────────────────────────────
                 if (parsed.type === "typing") {
                     if (parsed.senderId !== sessionRef.current?.participantId) {
-                        setTypingUser(parsed.senderId, parsed.senderName);
+                        upsertTypingMessage(parsed.senderId, parsed.senderName);
                     }
                     return;
                 }
 
+                // Ignore own messages echoed back
                 if (parsed.senderId === sessionRef.current?.participantId)
                     return;
 
@@ -442,6 +457,7 @@ export default function ChatPage() {
                     timestamp: parsed.timestamp,
                 });
 
+                // ── Decrypt ───────────────────────────────────────────────────
                 let decryptedContent = parsed.content;
                 if (encryptionService.hasSharedKey) {
                     try {
@@ -460,7 +476,8 @@ export default function ChatPage() {
                     }
                 }
 
-                clearTypingUser(parsed.senderId);
+                // Remove typing bubble immediately when real message arrives
+                removeTypingMessage(parsed.senderId);
 
                 setMessages((prev) => [
                     ...prev,
@@ -490,6 +507,9 @@ export default function ChatPage() {
             e2eReadyRef.current = false;
             setE2eStatus("pending");
             encryptionService.resetSharedKey();
+            // Clear all pending typing timers
+            typingTimers.current.forEach((t) => clearTimeout(t));
+            typingTimers.current.clear();
         };
     }, [
         chatName,
@@ -497,13 +517,17 @@ export default function ChatPage() {
         session,
         deriveKey,
         reconnectStatus,
-        clearTypingUser,
-        setTypingUser,
+        removeTypingMessage,
+        upsertTypingMessage,
     ]);
+
+    // ─── Scroll to bottom on new messages ────────────────────────────────────
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    // ─── Send handlers ────────────────────────────────────────────────────────
 
     const handleTyping = useCallback(() => {
         const currentSession = sessionRef.current;
@@ -567,7 +591,6 @@ export default function ChatPage() {
             participantId: currentSession?.participantId,
         });
 
-        // Eagerly clear local state so the UI responds immediately
         clearReconnectCredentials(chatName);
         clearSession();
         chatSocket.disconnect();
@@ -575,7 +598,6 @@ export default function ChatPage() {
             "Reconnect credentials cleared, session cleared, socket disconnected",
         );
 
-        // Best-effort server-side cleanup — we don't block navigation on it
         if (currentSession) {
             logger.debug("Notifying server of participant removal…", {
                 participantId: currentSession.participantId,
@@ -595,7 +617,7 @@ export default function ChatPage() {
         navigate("/");
     }, [chatName, clearSession, navigate]);
 
-    // ─── Reconnect state screens ─────────────────────────────────────────────
+    // ─── Reconnect state screens ──────────────────────────────────────────────
 
     if (reconnectStatus === "reconnecting") {
         return <ReconnectingScreen />;
@@ -615,8 +637,9 @@ export default function ChatPage() {
         return <MissingCredentialsScreen chatName={chatName} />;
     }
 
-    // reconnectStatus === "idle" from here on
     if (!sessionMatchesRoom) return null;
+
+    // ─── Render ───────────────────────────────────────────────────────────────
 
     return (
         <div className="flex h-screen flex-col">
@@ -660,6 +683,11 @@ export default function ChatPage() {
                     {messages.map((msg) =>
                         msg.type === "system" ? (
                             <SystemBubble key={msg.id} content={msg.content} />
+                        ) : msg.type === "typing" ? (
+                            <TypingBubble
+                                key={msg.id}
+                                senderName={msg.senderName}
+                            />
                         ) : (
                             <ChatBubble
                                 key={msg.id}
@@ -673,15 +701,7 @@ export default function ChatPage() {
                 </div>
             </ScrollArea>
 
-            {typingUsers.size > 0 && (
-                <div className="px-4 pb-1">
-                    <div className="mx-auto max-w-2xl space-y-2">
-                        {[...typingUsers.entries()].map(([id, name]) => (
-                            <TypingBubble key={id} senderName={name} />
-                        ))}
-                    </div>
-                </div>
-            )}
+            <Separator />
 
             <ChatInput
                 onSend={handleSend}
