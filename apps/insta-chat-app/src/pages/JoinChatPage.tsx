@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Lock, Loader2, LogIn } from "lucide-react";
 import { joinChat } from "@/services/api";
 import { encryptionService } from "@/services/encryption";
+import { saveReconnectCredentials } from "@/lib/utils";
 import { useChatStore } from "@/stores/chat";
 
 function decodeJwtPayload(token: string): {
@@ -56,7 +57,10 @@ export default function JoinChatPage() {
         participantName: payload.participantName,
       });
 
-      // 4. Navigate to chat
+      // 4. Save reconnect credentials so the user can rejoin after a page reload
+      await saveReconnectCredentials({ chatName: name, password: pass });
+
+      // 5. Navigate to chat
       navigate(`/chat/${encodeURIComponent(name)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to join chat");
@@ -104,7 +108,8 @@ export default function JoinChatPage() {
             </div>
             <CardTitle className="text-2xl">Join a Chat Room</CardTitle>
             <CardDescription>
-              Enter the room name and password to join an encrypted conversation.
+              Enter the room name and password to join an encrypted
+              conversation.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -144,9 +149,7 @@ export default function JoinChatPage() {
               </div>
             </div>
 
-            {error ? (
-              <p className="text-sm text-destructive">{error}</p>
-            ) : null}
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
             <Button
               className="w-full"

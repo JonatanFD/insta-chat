@@ -36,42 +36,69 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     );
     String chatName = payload.chatName();
     String participantName = payload.participantName();
+    String participantId = payload.participantId();
 
-    Sinks.Many<String> room = registry.getOrCreateRoom(chatName);
+    log.info("[{}] Participant '{}' ({}) connected", chatName, participantName, participantId);
 
+    // Per-session sink: receives messages forwarded from the shared room channel.
+    // Using tryEmitNext with FAIL_FAST so a slow consumer never blocks others.
+    Sinks.Many<String> sessionSink = Sinks.many()
+      .unicast()
+      .onBackpressureBuffer();
+
+    // Register this session's sink into the room so the registry can fan-out
+    // incoming Redis Pub/Sub messages to every connected session individually.
+    registry.registerSession(chatName, participantId, sessionSink);
+
+    // Announce arrival AFTER the session sink is registered so the "Has joined"
+    // message is guaranteed to reach all already-connected peers.
     registry.publish(chatName, participantName + " Has joined");
 
+    // Inbound: forward every received frame to the shared Redis channel.
     Mono<Void> receive = session
       .receive()
       .map(msg -> msg.getPayloadAsText())
       .doOnNext(msg -> registry.publish(chatName, msg))
+      .doOnError(err -> log.warn("[{}] Receive error for '{}': {}", chatName, participantName, err.getMessage()))
       .then();
 
+    // Outbound: drain this session's own sink — completely isolated from every
+    // other session's sink, so completing or cancelling here affects nobody else.
     Mono<Void> send = session.send(
-      room
+      sessionSink
         .asFlux()
         .filter(msg -> {
+          // Don't echo the participant's own join/leave system messages back to them.
           if (msg.equals(participantName + " Has joined")) return false;
-          if (msg.equals(participantName + " Has left")) return false;
+          if (msg.equals(participantName + " Has left"))  return false;
           return true;
         })
         .map(session::textMessage)
+        .doOnError(err -> log.warn("[{}] Send error for '{}': {}", chatName, participantName, err.getMessage()))
     );
 
     return Mono.zip(receive, send)
       .then()
-      .doFinally(signal ->
-        registry.publish(chatName, participantName + " Has left")
-      )
-      .then(
-        Mono.defer(() ->
-          chatService
-            .leaveChat(chatName, payload.participantId())
-            .onErrorResume(err -> {
-              log.error("Error on leaveChat: {}", err.getMessage());
-              return Mono.empty();
-            })
-        )
-      );
+      .doFinally(signal -> {
+        log.info("[{}] Participant '{}' ({}) disconnected — signal: {}", chatName, participantName, participantId, signal);
+
+        // Unregister the per-session sink BEFORE publishing "Has left" so the
+        // departing participant does not receive their own leave message.
+        registry.unregisterSession(chatName, participantId);
+
+        // Complete the session sink so its flux terminates cleanly.
+        sessionSink.tryEmitComplete();
+
+        registry.publish(chatName, participantName + " Has left");
+
+        // Best-effort server-side participant cleanup.
+        chatService
+          .leaveChat(chatName, participantId)
+          .onErrorResume(err -> {
+            log.error("[{}] leaveChat error for '{}': {}", chatName, participantName, err.getMessage());
+            return Mono.empty();
+          })
+          .subscribe();
+      });
   }
 }
