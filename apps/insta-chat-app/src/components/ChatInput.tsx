@@ -52,14 +52,21 @@ export function ChatInput({
                 isTyping.current = false;
                 onStopTyping?.();
             }
-        }, 300);
+        }, 1000);
     }, [clearStopTypingTimer, onStopTyping]);
 
+    const lastTypingEmit = useRef<number>(0);
+    const TYPING_THROTTLE_MS = 500;
+
     const handleChange = useCallback(() => {
-        if (!isTyping.current) {
-            isTyping.current = true;
+        const now = Date.now();
+
+        // Emite typing throttleado en cada keystroke
+        if (now - lastTypingEmit.current >= TYPING_THROTTLE_MS) {
+            lastTypingEmit.current = now;
             onTyping?.();
         }
+
         scheduleStopTyping();
     }, [onTyping, scheduleStopTyping]);
 

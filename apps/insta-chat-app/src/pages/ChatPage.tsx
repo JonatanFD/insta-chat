@@ -258,16 +258,23 @@ export default function ChatPage() {
     const [typingUsers, setTypingUsers] = useState<Map<string, string>>(
         new Map(),
     );
+    // auto-hide timer per sender (fires 1s after the last typing event)
     const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
         new Map(),
     );
+    // timestamp (ms) of when each sender's bubble first appeared
+    const typingShownAt = useRef<Map<string, number>>(new Map());
+
+    const TYPING_MIN_DISPLAY_MS = 1000;
+    const TYPING_IDLE_HIDE_MS = 1500;
 
     const bottomRef = useRef<HTMLDivElement>(null);
 
-    const clearTypingUser = useCallback((senderId: string) => {
+    const removeTypingUser = useCallback((senderId: string) => {
         const timer = typingTimers.current.get(senderId);
         if (timer !== undefined) clearTimeout(timer);
         typingTimers.current.delete(senderId);
+        typingShownAt.current.delete(senderId);
         setTypingUsers((prev) => {
             const next = new Map(prev);
             next.delete(senderId);
@@ -275,19 +282,51 @@ export default function ChatPage() {
         });
     }, []);
 
+    // Called when a real message arrives — hides the bubble immediately but
+    // never earlier than TYPING_MIN_DISPLAY_MS after it first appeared.
+    const clearTypingUser = useCallback(
+        (senderId: string) => {
+            const shownAt = typingShownAt.current.get(senderId);
+            if (shownAt === undefined) return; // bubble is not showing
+
+            const elapsed = Date.now() - shownAt;
+            const remaining = TYPING_MIN_DISPLAY_MS - elapsed;
+
+            if (remaining <= 0) {
+                removeTypingUser(senderId);
+            } else {
+                // Cancel the idle timer and replace it with a minimum-display one
+                const existing = typingTimers.current.get(senderId);
+                if (existing !== undefined) clearTimeout(existing);
+                const timer = setTimeout(
+                    () => removeTypingUser(senderId),
+                    remaining,
+                );
+                typingTimers.current.set(senderId, timer);
+            }
+        },
+        [removeTypingUser],
+    );
+
     const setTypingUser = useCallback(
         (senderId: string, senderName: string) => {
             const existing = typingTimers.current.get(senderId);
             if (existing !== undefined) clearTimeout(existing);
 
+            // Record first-shown timestamp only when the bubble is new
+            if (!typingShownAt.current.has(senderId)) {
+                typingShownAt.current.set(senderId, Date.now());
+            }
+
             setTypingUsers((prev) => new Map(prev).set(senderId, senderName));
 
+            // Auto-hide after 1s of no new typing events
             const timer = setTimeout(() => {
-                clearTypingUser(senderId);
-            }, 300);
+                removeTypingUser(senderId);
+            }, TYPING_IDLE_HIDE_MS);
             typingTimers.current.set(senderId, timer);
         },
-        [clearTypingUser],
+        [removeTypingUser],
     );
     const e2eReadyRef = useRef(false);
     const sessionRef = useRef(session);
@@ -633,8 +672,6 @@ export default function ChatPage() {
                     <div ref={bottomRef} className="h-1" />
                 </div>
             </ScrollArea>
-
-            <Separator />
 
             {typingUsers.size > 0 && (
                 <div className="px-4 pb-1">
