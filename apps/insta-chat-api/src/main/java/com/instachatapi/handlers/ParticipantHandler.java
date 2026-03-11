@@ -2,8 +2,8 @@ package com.instachatapi.handlers;
 
 import com.instachatapi.models.Participant;
 import com.instachatapi.security.JwtService;
-import com.instachatapi.security.PasswordService;
 import com.instachatapi.services.ParticipantService;
+import com.instachatapi.services.exceptions.UnauthorizedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
@@ -26,21 +26,28 @@ public class ParticipantHandler {
     }
 
     public Mono<ServerResponse> fetchAllParticipants(ServerRequest request) {
-        var token = request.headers().firstHeader("Authorization");
-        log.info("Authorization token: {}", token);
-        var jwt = token.substring(7);
-        var jwtPayload = jwtService.decode(jwt);
-        var chatName = request.pathVariable("chatName");
+        return Mono.fromCallable(() -> {
+                var token = request.headers().firstHeader("Authorization");
+                if (token == null || !token.startsWith("Bearer ")) {
+                    throw new UnauthorizedException("Missing or invalid Authorization header");
+                }
+                var jwt = token.substring(7);
+                return jwtService.decode(jwt);
+            })
+            .flatMap(jwtPayload -> {
+                var chatName = request.pathVariable("chatName");
 
-        if (!jwtPayload.chatName().equals(chatName)) {
-            return Mono.error(
-                new IllegalArgumentException("Chat name mismatch")
-            );
-        }
+                if (!jwtPayload.chatName().equals(chatName)) {
+                    return Mono.error(
+                        new UnauthorizedException("Chat name mismatch")
+                    );
+                }
 
-        return ServerResponse.ok().body(
-            participantService.fetchAllParticipants(chatName),
-            Participant.class
-        );
+                return ServerResponse.ok().body(
+                    participantService.fetchAllParticipants(chatName),
+                    Participant.class
+                );
+            })
+            .onErrorResume(GlobalErrorHandler::handleError);
     }
 }

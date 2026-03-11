@@ -3,6 +3,8 @@ package com.instachatapi.services;
 import com.instachatapi.models.Chat;
 import com.instachatapi.repositories.ChatRepository;
 import com.instachatapi.security.JwtService;
+import com.instachatapi.services.exceptions.ChatNotFoundException;
+import com.instachatapi.services.exceptions.InvalidPasswordException;
 import com.instachatapi.shared.ChatJwtPayload;
 
 import java.time.Instant;
@@ -62,12 +64,12 @@ public class ChatService {
         return chatRepository
                 .getChat(chatName)
                 .switchIfEmpty(
-                        Mono.error(new IllegalStateException("Chat not found"))
+                        Mono.error(new ChatNotFoundException("Chat not found"))
                 )
                 .flatMap(chat -> {
                     if (!passwordEncoder.matches(chatPassword, chat.password())) {
                         return Mono.error(
-                                new IllegalStateException(
+                                new InvalidPasswordException(
                                         "Incorrect password to the chat"
                                 )
                         );
@@ -95,7 +97,7 @@ public class ChatService {
         return chatRepository
                 .getChat(chatName)
                 .switchIfEmpty(
-                        Mono.error(new IllegalStateException("Chat not found"))
+                        Mono.error(new ChatNotFoundException("Chat not found"))
                 )
                 .flatMap(chat ->
                         participantService
