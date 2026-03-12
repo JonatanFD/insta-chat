@@ -37,7 +37,11 @@ public class IpRateLimitFilter implements HandlerFilterFunction<ServerResponse, 
                 })
                 .flatMap(count -> {
                     if (count > MAX_REQUESTS) {
-                        return ServerResponse.status(HttpStatus.TOO_MANY_REQUESTS).build();
+                        return redisTemplate.getExpire(key)
+                                .flatMap(duration -> ServerResponse.status(HttpStatus.TOO_MANY_REQUESTS)
+                                        .header("X-RateLimit-Reset", String.valueOf(duration.getSeconds()))
+                                        .build())
+                                .switchIfEmpty(ServerResponse.status(HttpStatus.TOO_MANY_REQUESTS).build());
                     }
                     return next.handle(request);
                 });

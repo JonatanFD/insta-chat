@@ -22,16 +22,16 @@ public class ChatHandler {
     public Mono<ServerResponse> createChat(ServerRequest request) {
         return request
             .bodyToMono(CreateChatRequest.class)
-            .flatMap(req ->
-                chatService.createChat(
+            .flatMap(req -> {
+                if (req.termsAccepted() == null || !req.termsAccepted()) {
+                    return ServerResponse.badRequest().bodyValue("You must accept the terms and conditions to create a chat.");
+                }
+                return chatService.createChat(
                     req.chatName(),
                     req.password(),
                     Instant.now().plusSeconds(2 * 60 * 60) // 2 hours
-                )
-            )
-            .flatMap(response ->
-                ServerResponse.status(201).bodyValue(response)
-            )
+                ).flatMap(response -> ServerResponse.status(201).bodyValue(response));
+            })
             .onErrorResume(GlobalErrorHandler::handleError);
     }
 

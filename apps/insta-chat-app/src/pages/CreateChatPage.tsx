@@ -10,7 +10,16 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Lock, MessageSquare, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { ArrowLeft, Lock, MessageSquare, Loader2, AlertTriangle } from "lucide-react";
 import { createChat, joinChat } from "@/services/api";
 import { encryptionService } from "@/services/encryption";
 import { saveReconnectCredentials } from "@/lib/utils";
@@ -31,20 +40,31 @@ export default function CreateChatPage() {
 
     const [chatName, setChatName] = useState("");
     const [password, setPassword] = useState("");
+    const [termsAccepted, setTermsAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [rateLimitModalOpen, setRateLimitModalOpen] = useState(false);
+    const [resetTime, setResetTime] = useState<string>("");
+
+    const formatResetTime = (seconds: number) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        if (h > 0) return `${h} hours and ${m} minutes`;
+        if (m > 0) return `${m} minutes`;
+        return `${seconds} seconds`;
+    };
 
     const handleCreate = async () => {
         const name = chatName.trim();
         const pass = password.trim();
-        if (!name || !pass) return;
+        if (!name || !pass || !termsAccepted) return;
 
         setLoading(true);
         setError(null);
 
         try {
             // 1. Create the chat room
-            await createChat(name, pass);
+            await createChat(name, pass, termsAccepted);
 
             // 2. Generate E2E key pair
             const publicKey = await encryptionService.generateKeyPair();
@@ -67,9 +87,24 @@ export default function CreateChatPage() {
             // 6. Navigate to chat
             navigate(`/rooms/${encodeURIComponent(name)}`);
         } catch (err) {
-            setError(
-                err instanceof Error ? err.message : "Failed to create chat",
-            );
+            if (err instanceof Error) {
+                try {
+                    const parsedErr = JSON.parse(err.message);
+                    if (parsedErr.type === "RATE_LIMIT") {
+                        const timeStr = parsedErr.resetInSeconds 
+                            ? formatResetTime(parsedErr.resetInSeconds) 
+                            : "24 hours";
+                        setResetTime(timeStr);
+                        setRateLimitModalOpen(true);
+                        return; // return so we don't set a normal error
+                    }
+                } catch (e) {
+                    // Not a JSON error, handle normally
+                }
+                setError(err.message);
+            } else {
+                setError("Failed to create chat");
+            }
         } finally {
             setLoading(false);
         }
@@ -177,12 +212,35 @@ export default function CreateChatPage() {
                             </Badge>
                         </div>
 
+                        <div className="flex items-start space-x-2 rounded-md border p-4">
+                            <Checkbox 
+                                id="terms" 
+                                checked={termsAccepted}
+                                onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                            />
+                            <div className="grid gap-1.5 leading-none">
+                                <label
+                                    htmlFor="terms"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                    Accept terms and conditions
+                                </label>
+                                <p className="text-sm text-muted-foreground">
+                                    I agree to the{" "}
+                                    <Link to="/terms" className="text-primary hover:underline">
+                                        terms of service
+                                    </Link>
+                                    {" "}and understand my IP is temporarily stored for rate limiting.
+                                </p>
+                            </div>
+                        </div>
+
                         <Button
                             className="w-full"
                             size="lg"
                             onClick={handleCreate}
                             disabled={
-                                !chatName.trim() || !password.trim() || loading
+                                !chatName.trim() || !password.trim() || !termsAccepted || loading
                             }
                         >
                             {loading ? (
@@ -195,6 +253,33 @@ export default function CreateChatPage() {
                     </CardContent>
                 </Card>
             </main>
+
+            <Dialog open={rateLimitModalOpen} onOpenChange={setRateLimitModalOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-destructive/10">
+                            <AlertTriangle className="size-6 text-destructive" />
+                        </div>
+                        <DialogTitle className="text-center text-xl">Rate Limit Exceeded</DialogTitle>
+                        <DialogDescription className="text-center text-base pt-2">
+                            You have reached the maximum number of chat rooms you can create within 24 hours to prevent spam and abuse.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 text-center">
+                        <p className="text-sm text-muted-foreground">
+                            Please try again in:
+                        </p>
+                        <p className="text-2xl font-bold text-foreground mt-1">
+                            {resetTime}
+                        </p>
+                    </div>
+                    <DialogFooter className="sm:justify-center">
+                        <Button onClick={() => setRateLimitModalOpen(false)}>
+                            Understood
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
