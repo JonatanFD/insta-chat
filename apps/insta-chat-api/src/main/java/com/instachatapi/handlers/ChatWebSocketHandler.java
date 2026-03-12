@@ -71,6 +71,8 @@ public class ChatWebSocketHandler implements WebSocketHandler {
           // Don't echo the participant's own join/leave system messages back to them.
           if (msg.equals(participantName + " Has joined")) return false;
           if (msg.equals(participantName + " Has left"))  return false;
+          // Don't echo the participant's own typing events back to them.
+          if (msg.contains("\"type\":\"typing\"") && msg.contains("\"senderId\":\"" + participantId + "\"")) return false;
           return true;
         })
         .map(session::textMessage)

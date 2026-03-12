@@ -4,73 +4,83 @@ type MessageHandler = (data: string) => void;
 type ConnectionHandler = (connected: boolean) => void;
 
 class ChatSocketService {
-  private ws: WebSocket | null = null;
-  private messageHandlers = new Set<MessageHandler>();
-  private connectionHandlers = new Set<ConnectionHandler>();
+    private ws: WebSocket | null = null;
+    private messageHandlers = new Set<MessageHandler>();
+    private connectionHandlers = new Set<ConnectionHandler>();
 
-  connect(chatName: string, token: string): void {
-    if (this.ws) {
-      this.ws.onopen = null;
-      this.ws.onclose = null;
-      this.ws.onerror = null;
-      this.ws.onmessage = null;
-      this.ws.close();
-      this.ws = null;
+    connect(chatName: string, token: string): void {
+        if (this.ws) {
+            this.ws.onopen = null;
+            this.ws.onclose = null;
+            this.ws.onerror = null;
+            this.ws.onmessage = null;
+            this.ws.close();
+            this.ws = null;
+        }
+
+        const url = `${WS_BASE}/${encodeURIComponent(chatName)}?token=${encodeURIComponent(token)}`;
+        this.ws = new WebSocket(url);
+
+        this.ws.onopen = () => {
+            this.connectionHandlers.forEach((h) => h(true));
+        };
+        this.ws.onclose = () => {
+            this.connectionHandlers.forEach((h) => h(false));
+        };
+        this.ws.onerror = () => {
+            this.connectionHandlers.forEach((h) => h(false));
+        };
+        this.ws.onmessage = (event: MessageEvent) => {
+            const data =
+                typeof event.data === "string"
+                    ? event.data
+                    : String(event.data);
+            this.messageHandlers.forEach((h) => h(data));
+        };
     }
 
-    const url = `${WS_BASE}/${encodeURIComponent(chatName)}?token=${encodeURIComponent(token)}`;
-    this.ws = new WebSocket(url);
-
-    this.ws.onopen = () => {
-      this.connectionHandlers.forEach((h) => h(true));
-    };
-    this.ws.onclose = () => {
-      this.connectionHandlers.forEach((h) => h(false));
-    };
-    this.ws.onerror = () => {
-      this.connectionHandlers.forEach((h) => h(false));
-    };
-    this.ws.onmessage = (event: MessageEvent) => {
-      const data =
-        typeof event.data === "string" ? event.data : String(event.data);
-      this.messageHandlers.forEach((h) => h(data));
-    };
-  }
-
-  disconnect(): void {
-    if (this.ws) {
-      this.ws.onopen = null;
-      this.ws.onclose = null;
-      this.ws.onerror = null;
-      this.ws.onmessage = null;
-      this.ws.close();
-      this.ws = null;
+    disconnect(): void {
+        if (this.ws) {
+            this.ws.onopen = null;
+            this.ws.onclose = null;
+            this.ws.onerror = null;
+            this.ws.onmessage = null;
+            this.ws.close();
+            this.ws = null;
+        }
     }
-  }
 
-  send(payload: string): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(payload);
+    send(payload: string): void {
+        if (this.ws?.readyState === WebSocket.OPEN) {
+            this.ws.send(payload);
+        }
     }
-  }
 
-  onMessage(handler: MessageHandler): () => void {
-    this.messageHandlers.add(handler);
-    return () => {
-      this.messageHandlers.delete(handler);
-    };
-  }
+    sendTyping(senderId: string, senderName: string): void {
+        if (this.ws?.readyState === WebSocket.OPEN) {
+            this.ws.send(
+                JSON.stringify({ type: "typing", senderId, senderName }),
+            );
+        }
+    }
 
-  onConnectionChange(handler: ConnectionHandler): () => void {
-    this.connectionHandlers.add(handler);
-    return () => {
-      this.connectionHandlers.delete(handler);
-    };
-  }
+    onMessage(handler: MessageHandler): () => void {
+        this.messageHandlers.add(handler);
+        return () => {
+            this.messageHandlers.delete(handler);
+        };
+    }
 
-  get isConnected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN;
-  }
+    onConnectionChange(handler: ConnectionHandler): () => void {
+        this.connectionHandlers.add(handler);
+        return () => {
+            this.connectionHandlers.delete(handler);
+        };
+    }
+
+    get isConnected(): boolean {
+        return this.ws?.readyState === WebSocket.OPEN;
+    }
 }
 
 export const chatSocket = new ChatSocketService();
