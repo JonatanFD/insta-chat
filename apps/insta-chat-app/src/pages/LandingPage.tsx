@@ -15,10 +15,9 @@ import {
     UserX,
     ServerOff,
 } from "lucide-react";
-import { ModeToggle } from "@/components/mode-toggle";
-import InstaChatLogo from "@/components/InstaChatLogo";
 import InstaChatAppLogo from "@/components/InstaChatAppLogo";
-import FloatingNavDemo from "@/components/floating-navbar-demo";
+import LandingHeader from "@/components/LandingHeader";
+import InstaChatLogo from "@/components/InstaChatLogo";
 
 const features = [
     {
@@ -62,7 +61,7 @@ export default function LandingPage() {
             <div className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-background/80 via-background/60 to-background/80" />
 
             {/* Navbar */}
-            <FloatingNavDemo />
+            <LandingHeader />
 
             {/* Hero Section */}
             <section className="mx-auto flex max-w-3xl flex-col items-center px-6 pt-24 pb-20 text-center">
@@ -127,7 +126,7 @@ export default function LandingPage() {
             <footer className="border-t">
                 <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
-                        <MessageSquare className="size-4" />
+                        <InstaChatLogo className="h-6 w-auto" />
                         <span>InstaChat</span>
                     </div>
                     <p>Private by design. No data collected.</p>
