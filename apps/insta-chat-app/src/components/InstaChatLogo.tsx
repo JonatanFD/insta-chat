@@ -37,8 +37,11 @@ export default function InstaChatLogo(props: React.SVGProps<SVGSVGElement>) {
                     y2="3160.36"
                     gradientUnits="userSpaceOnUse"
                 >
-                    <stop stopColor="#00FF87" />
-                    <stop offset="1" stopColor="#60EFFF" />
+                    <stop className="[stop-color:var(--color-primary)]" />
+                    <stop
+                        offset="1"
+                        className="[stop-color:var(--color-primary)] dark:[stop-color:var(--color-chart-2)]"
+                    />
                 </linearGradient>
                 <linearGradient
                     id="paint1_linear_11_318"
@@ -48,8 +51,11 @@ export default function InstaChatLogo(props: React.SVGProps<SVGSVGElement>) {
                     y2="69.6123"
                     gradientUnits="userSpaceOnUse"
                 >
-                    <stop stopColor="#00FF87" />
-                    <stop offset="1" stopColor="#60EFFF" />
+                    <stop className="[stop-color:var(--color-primary)]" />
+                    <stop
+                        offset="1"
+                        className="[stop-color:var(--color-primary)] dark:[stop-color:var(--color-chart-2)]"
+                    />
                 </linearGradient>
                 <linearGradient
                     id="paint2_linear_11_318"
@@ -59,8 +65,11 @@ export default function InstaChatLogo(props: React.SVGProps<SVGSVGElement>) {
                     y2="135.612"
                     gradientUnits="userSpaceOnUse"
                 >
-                    <stop stopColor="#00FF87" />
-                    <stop offset="1" stopColor="#60EFFF" />
+                    <stop className="[stop-color:var(--color-primary)]" />
+                    <stop
+                        offset="1"
+                        className="[stop-color:var(--color-primary)] dark:[stop-color:var(--color-chart-2)]"
+                    />
                 </linearGradient>
                 <linearGradient
                     id="paint3_linear_11_318"
@@ -70,8 +79,11 @@ export default function InstaChatLogo(props: React.SVGProps<SVGSVGElement>) {
                     y2="55.6123"
                     gradientUnits="userSpaceOnUse"
                 >
-                    <stop stopColor="#00FF87" />
-                    <stop offset="1" stopColor="#60EFFF" />
+                    <stop className="[stop-color:var(--color-primary)]" />
+                    <stop
+                        offset="1"
+                        className="[stop-color:var(--color-primary)] dark:[stop-color:var(--color-chart-2)]"
+                    />
                 </linearGradient>
             </defs>
         </svg>

@@ -18,6 +18,7 @@ import {
 import { ModeToggle } from "@/components/mode-toggle";
 import InstaChatLogo from "@/components/InstaChatLogo";
 import InstaChatAppLogo from "@/components/InstaChatAppLogo";
+import FloatingNavDemo from "@/components/floating-navbar-demo";
 
 const features = [
     {
@@ -61,26 +62,7 @@ export default function LandingPage() {
             <div className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-background/80 via-background/60 to-background/80" />
 
             {/* Navbar */}
-            <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-sm">
-                <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-                    <Link
-                        to="/"
-                        className="flex items-center gap-2 font-semibold"
-                    >
-                        <InstaChatLogo className="h-5 w-auto" />
-                        <span>InstaChat</span>
-                    </Link>
-                    <div className="flex items-center gap-3">
-                        <Button variant="ghost" size="sm" asChild>
-                            <Link to="/join">Join Chat</Link>
-                        </Button>
-                        <Button size="sm" asChild>
-                            <Link to="/create">Create Chat</Link>
-                        </Button>
-                        <ModeToggle />
-                    </div>
-                </nav>
-            </header>
+            <FloatingNavDemo />
 
             {/* Hero Section */}
             <section className="mx-auto flex max-w-3xl flex-col items-center px-6 pt-24 pb-20 text-center">
@@ -89,7 +71,7 @@ export default function LandingPage() {
                     End-to-End Encrypted
                 </Badge>
 
-                <InstaChatAppLogo className="h-40 w-auto" />
+                <InstaChatAppLogo className="h-40 w-auto my-4" />
 
                 <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
                     Messages that vanish.
