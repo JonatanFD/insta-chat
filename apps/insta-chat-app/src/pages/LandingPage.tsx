@@ -16,6 +16,8 @@ import {
     ServerOff,
 } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
+import InstaChatLogo from "@/components/InstaChatLogo";
+import InstaChatAppLogo from "@/components/InstaChatAppLogo";
 
 const features = [
     {
@@ -65,7 +67,7 @@ export default function LandingPage() {
                         to="/"
                         className="flex items-center gap-2 font-semibold"
                     >
-                        <MessageSquare className="size-5" />
+                        <InstaChatLogo className="h-5 w-auto" />
                         <span>InstaChat</span>
                     </Link>
                     <div className="flex items-center gap-3">
@@ -86,6 +88,8 @@ export default function LandingPage() {
                     <Shield className="size-3" />
                     End-to-End Encrypted
                 </Badge>
+
+                <InstaChatAppLogo className="h-40 w-auto" />
 
                 <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
                     Messages that vanish.
