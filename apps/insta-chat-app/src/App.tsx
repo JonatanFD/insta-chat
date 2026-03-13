@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { Toaster } from "@/components/ui/sonner";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const CreateChatPage = lazy(() => import("./pages/CreateChatPage"));
@@ -28,6 +29,7 @@ function App() {
                     </Routes>
                 </Suspense>
             </BrowserRouter>
+            <Toaster position="top-center" richColors />
         </ThemeProvider>
     );
 }

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 import {
     ArrowLeft,
     Clock,
@@ -12,6 +13,8 @@ import {
     Loader2,
     AlertTriangle,
     LogIn,
+    Copy,
+    CheckCheck,
 } from "lucide-react";
 import { chatSocket } from "@/services/socket";
 import { encryptionService } from "@/services/encryption";
@@ -42,6 +45,7 @@ interface ChatMessage {
     senderId: string;
     content: string;
     timestamp: number;
+    isRead?: boolean;
 }
 
 interface SystemMessage {
@@ -57,6 +61,11 @@ interface TypingMessage {
     senderId: string;
     senderName: string;
     timestamp: number;
+}
+
+export interface ReadReceiptMessage {
+    type: "read_receipt";
+    messageId: string;
 }
 
 type DisplayMessage = ChatMessage | SystemMessage | TypingMessage;
@@ -127,36 +136,59 @@ interface ChatBubbleProps {
     isMine: boolean;
 }
 
-const ChatBubble = memo(({ msg, isMine }: ChatBubbleProps) => (
-    <div
-        className={`flex items-end gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}
-    >
-        {!isMine && (
-            <Avatar className="size-7">
-                <AvatarFallback className="text-xs">
-                    {msg.senderName.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-            </Avatar>
-        )}
+const ChatBubble = memo(({ msg, isMine }: ChatBubbleProps) => {
+    const handleCopy = () => {
+        navigator.clipboard.writeText(msg.content);
+        toast.success("Message copied");
+    };
+
+    return (
         <div
-            className={`max-w-[70%] rounded-2xl px-3.5 py-2 text-sm ${
-                isMine ? "bg-primary text-primary-foreground" : "bg-muted"
-            }`}
+            className={`flex items-end gap-2 group ${isMine ? "flex-row-reverse" : "flex-row"}`}
         >
             {!isMine && (
-                <p className="mb-0.5 text-xs font-medium opacity-70">
-                    {msg.senderName}
-                </p>
+                <Avatar className="size-7">
+                    <AvatarFallback className="text-xs">
+                        {msg.senderName.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                </Avatar>
             )}
-            <p className="break-words">{msg.content}</p>
-            <p
-                className={`mt-1 text-[10px] ${isMine ? "text-primary-foreground/70" : "text-muted-foreground"}`}
+            <div className="flex flex-col relative max-w-[70%]">
+                <div
+                    className={`rounded-2xl px-3.5 py-2 text-sm ${
+                        isMine ? "bg-primary text-primary-foreground" : "bg-muted"
+                    }`}
+                >
+                    {!isMine && (
+                        <p className="mb-0.5 text-xs font-medium opacity-70">
+                            {msg.senderName}
+                        </p>
+                    )}
+                    <p className="break-words">{msg.content}</p>
+                    <div className="flex justify-end items-center gap-1 mt-1">
+                        <p
+                            className={`text-[10px] ${isMine ? "text-primary-foreground/70" : "text-muted-foreground"}`}
+                        >
+                            {formatTime(msg.timestamp)}
+                        </p>
+                        {isMine && msg.isRead && (
+                            <CheckCheck className="size-3 text-primary-foreground/90" />
+                        )}
+                    </div>
+                </div>
+            </div>
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                className="opacity-0 group-hover:opacity-100 transition-opacity size-6"
+                onClick={handleCopy}
+                title="Copy message"
             >
-                {formatTime(msg.timestamp)}
-            </p>
+                <Copy className="size-3" />
+            </Button>
         </div>
-    </div>
-));
+    );
+});
 
 // ─── Reconnect overlay screens ────────────────────────────────────────────────
 
@@ -436,7 +468,18 @@ export default function ChatPage() {
                     content: string;
                     iv: string;
                     timestamp: number;
+                    messageId?: string;
                 };
+
+                // ── Read Receipt Event ──────────────────────────────────────
+                if (parsed.type === "read_receipt") {
+                    setMessages((prev) => 
+                        prev.map((msg) => 
+                            msg.id === parsed.messageId ? { ...msg, isRead: true } : msg
+                        )
+                    );
+                    return;
+                }
 
                 // ── Typing event ──────────────────────────────────────────────
                 if (parsed.type === "typing") {
@@ -479,17 +522,29 @@ export default function ChatPage() {
                 // Remove typing bubble immediately when real message arrives
                 removeTypingMessage(parsed.senderId);
 
+                const messageId = `msg-${parsed.timestamp}-${parsed.senderId.slice(-4)}`;
+
                 setMessages((prev) => [
                     ...prev,
                     {
                         type: "chat",
-                        id: `msg-${parsed.timestamp}-${parsed.senderId.slice(-4)}`,
+                        id: messageId,
                         senderName: parsed.senderName,
                         senderId: parsed.senderId,
                         content: decryptedContent,
                         timestamp: parsed.timestamp,
+                        isRead: false,
                     },
                 ]);
+
+                // Send read receipt if window is focused
+                if (document.hasFocus()) {
+                    chatSocket.send(JSON.stringify({
+                        type: "read_receipt",
+                        messageId: messageId,
+                        senderId: sessionRef.current?.participantId,
+                    }));
+                }
             } catch {
                 setMessages((prev) => [...prev, makeSystemMsg(raw)]);
             }

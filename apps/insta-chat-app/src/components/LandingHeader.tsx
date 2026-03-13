@@ -1,5 +1,7 @@
 import InstaChatLogo from "./InstaChatLogo";
 import { ModeToggle } from "./mode-toggle";
+import { GithubLogo } from "./ui/GithubLogo";
+import { Button } from "./ui/button";
 
 export default function LandingHeader() {
     return (
@@ -10,7 +12,19 @@ export default function LandingHeader() {
                     <span className="text-xl font-bold">InstaChat</span>
                 </a>
 
-                <ModeToggle />
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" asChild>
+                        <a
+                            href="https://github.com/JonatanFD/insta-chat"
+                            target="_blank"
+                            rel="noreferrer noopener"
+                        >
+                            <GithubLogo className="size-5" />
+                            <span className="sr-only">GitHub Repository</span>
+                        </a>
+                    </Button>
+                    <ModeToggle />
+                </div>
             </nav>
         </header>
     );
