@@ -130,7 +130,7 @@ export default function JoinChatPage() {
                                     placeholder="Enter room name"
                                     value={chatName}
                                     onChange={(e) => {
-                                        setChatName(e.target.value);
+                                        setChatName(e.target.value.replace(/\s+/g, '_'));
                                         setError(null);
                                     }}
                                     onKeyDown={handleKeyDown}

@@ -1,5 +1,6 @@
 package com.instachatapi.routers;
 
+import com.instachatapi.filters.IpRateLimitFilter;
 import com.instachatapi.handlers.ChatHandler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,9 +18,11 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 public class ChatRouter {
 
     private final ChatHandler chatHandler;
+    private final IpRateLimitFilter ipRateLimitFilter;
 
-    public ChatRouter(ChatHandler chatHandler) {
+    public ChatRouter(ChatHandler chatHandler, IpRateLimitFilter ipRateLimitFilter) {
         this.chatHandler = chatHandler;
+        this.ipRateLimitFilter = ipRateLimitFilter;
     }
 
     @Bean
@@ -64,7 +67,7 @@ public class ChatRouter {
         return RouterFunctions.route()
                 .POST("/api/chats/{chatName}/join", chatHandler::joinToChat)
                 .DELETE("/api/chats/{chatName}/leave", chatHandler::leaveChat)
-                .POST("/api/chats", chatHandler::createChat)
+                .add(RouterFunctions.route().POST("/api/chats", chatHandler::createChat).filter(ipRateLimitFilter).build())
                 .build();
     }
 }

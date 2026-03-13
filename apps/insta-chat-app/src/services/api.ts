@@ -17,14 +17,22 @@ export interface Participant {
 export async function createChat(
     chatName: string,
     password: string,
+    termsAccepted: boolean,
 ): Promise<Chat> {
     const res = await fetch(`${API_BASE}/chats`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatName, password }),
+        body: JSON.stringify({ chatName, password, termsAccepted }),
     });
 
     if (!res.ok) {
+        if (res.status === 429) {
+            const resetInSeconds = res.headers.get("X-RateLimit-Reset");
+            throw new Error(JSON.stringify({ 
+                type: "RATE_LIMIT", 
+                resetInSeconds: resetInSeconds ? parseInt(resetInSeconds, 10) : null 
+            }));
+        }
         const text = await res.text();
         throw new Error(text || `Failed to create chat (${res.status})`);
     }
