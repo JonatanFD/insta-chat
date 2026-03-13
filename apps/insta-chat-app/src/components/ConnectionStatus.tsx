@@ -69,7 +69,7 @@ export function ConnectionStatus({
                 ) : (
                     <WifiOff className="size-3" />
                 )}
-                {isConnected ? "Connected" : "Disconnected"}
+                <span className="hidden sm:inline">{isConnected ? "Connected" : "Disconnected"}</span>
             </Badge>
 
             {/* Estado E2E */}
@@ -78,7 +78,7 @@ export function ConnectionStatus({
                 className={cn("gap-1 text-xs", e2e.className)}
             >
                 {e2e.icon}
-                {e2e.label}
+                <span className="hidden sm:inline">{e2e.label}</span>
             </Badge>
         </div>
     );
