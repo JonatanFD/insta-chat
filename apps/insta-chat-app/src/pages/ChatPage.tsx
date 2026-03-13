@@ -14,7 +14,8 @@ import {
   ConnectionStatus,
   type E2EStatus,
 } from "@/components/ConnectionStatus";
-import { ChatInput } from "@/components/ChatInput";
+import { useDropzone } from "react-dropzone";
+import { ChatInput, type ChatInputRef } from "@/components/ChatInput";
 import { clearReconnectCredentials, makeSystemMsg } from "@/lib/utils";
 import { useRoomReconnect } from "@/hooks/useRoomReconnect";
 import { createLogger } from "@/lib/logger";
@@ -51,6 +52,18 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [e2eStatus, setE2eStatus] = useState<E2EStatus>("pending");
+
+  const chatInputRef = useRef<ChatInputRef>(null);
+
+  const { getRootProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      if (acceptedFiles.length > 0 && chatInputRef.current) {
+        chatInputRef.current.processFile(acceptedFiles[0]);
+      }
+    },
+    noClick: true,
+    noKeyboard: true,
+  });
 
   // One timer per sender — auto-removes the typing bubble after idle
   const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
@@ -437,7 +450,14 @@ export default function ChatPage() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col relative" {...getRootProps()}>
+      {isDragActive && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm border-4 border-dashed border-primary">
+          <p className="text-2xl font-medium text-primary">
+            Drop file here to send
+          </p>
+        </div>
+      )}
       <header className="flex items-center justify-between border-b px-4 py-2">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon-sm" onClick={handleLeave}>
@@ -489,6 +509,7 @@ export default function ChatPage() {
       <Separator />
 
       <ChatInput
+        ref={chatInputRef}
         onSend={handleSend}
         onTyping={handleTyping}
         disabled={!isConnected}
