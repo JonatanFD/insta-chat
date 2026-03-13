@@ -1,6 +1,6 @@
 package com.instachatapi.filters;
 
-import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.HandlerFilterFunction;
@@ -15,12 +15,12 @@ import java.util.List;
 @Component
 public class IpRateLimitFilter implements HandlerFilterFunction<ServerResponse, ServerResponse> {
 
-    private final ReactiveStringRedisTemplate redisTemplate;
+    private final ReactiveRedisTemplate<String, String> redisTemplate;
     private static final int MAX_REQUESTS = 5;
     private static final Duration TTL = Duration.ofHours(24);
 
-    public IpRateLimitFilter(ReactiveStringRedisTemplate redisTemplate) {
-        this.redisTemplate = redisTemplate;
+    public IpRateLimitFilter(ReactiveRedisTemplate<String, String> reactiveStringRedisTemplate) {
+        this.redisTemplate = reactiveStringRedisTemplate;
     }
 
     @Override
