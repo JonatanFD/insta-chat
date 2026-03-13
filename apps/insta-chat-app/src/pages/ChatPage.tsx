@@ -458,21 +458,21 @@ export default function ChatPage() {
           </p>
         </div>
       )}
-      <header className="flex items-center justify-between border-b px-4 py-2">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon-sm" onClick={handleLeave}>
+      <header className="flex items-center justify-between border-b px-4 py-2 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+          <Button variant="ghost" size="icon-sm" onClick={handleLeave} className="shrink-0">
             <ArrowLeft className="size-4" />
           </Button>
-          <div className="flex items-center gap-2">
-            <MessageSquare className="size-4" />
-            <span className="text-sm font-medium">{chatName}</span>
+          <div className="flex items-center gap-2 overflow-hidden">
+            <MessageSquare className="size-4 shrink-0" />
+            <span className="text-sm font-medium truncate">{chatName}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Badge variant="secondary" className="gap-1 text-xs">
             <Clock className="size-3" />
-            2h
+            <span className="hidden sm:inline">2h</span>
           </Badge>
           <ConnectionStatus isConnected={isConnected} e2eStatus={e2eStatus} />
           <ModeToggle />

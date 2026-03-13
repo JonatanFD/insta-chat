@@ -66,13 +66,13 @@ export default function LandingPage() {
             <LandingHeader />
 
             {/* Hero Section */}
-            <section className="mx-auto flex max-w-3xl flex-col items-center px-6 pt-24 pb-20 text-center">
-                <Badge variant="secondary" className="mb-6 gap-1.5">
+            <section className="mx-auto flex max-w-3xl flex-col items-center px-4 sm:px-6 pt-16 sm:pt-24 pb-12 sm:pb-20 text-center">
+                <Badge variant="secondary" className="mb-4 sm:mb-6 gap-1.5">
                     <Shield className="size-3" />
                     End-to-End Encrypted
                 </Badge>
 
-                <InstaChatAppLogo className="h-40 w-auto my-4" />
+                <InstaChatAppLogo className="h-32 sm:h-40 w-auto my-4" />
 
                 <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
                     Messages that vanish.
@@ -82,21 +82,21 @@ export default function LandingPage() {
                     </span>
                 </h1>
 
-                <p className="mt-6 max-w-xl text-lg text-muted-foreground">
+                <p className="mt-4 sm:mt-6 max-w-xl text-base sm:text-lg text-muted-foreground">
                     Encrypted end-to-end chat. No sign-up. No data stored. No
                     trace. Chats auto-delete after 2 hours.
                 </p>
 
-                <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-                    <Button size="lg" asChild>
+                <div className="mt-8 sm:mt-10 flex w-full sm:w-auto flex-col gap-3 sm:flex-row">
+                    <Button size="lg" className="w-full sm:w-auto" asChild>
                         <Link to="/create">
-                            <MessageSquare className="size-4" />
+                            <MessageSquare className="size-4 mr-2" />
                             Create a Chat
                         </Link>
                     </Button>
-                    <Button size="lg" variant="outline" asChild>
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto" asChild>
                         <Link to="/join">
-                            <Lock className="size-4" />
+                            <Lock className="size-4 mr-2" />
                             Join a Chat
                         </Link>
                     </Button>
@@ -104,24 +104,24 @@ export default function LandingPage() {
             </section>
 
             {/* Features List in Grid */}
-            <section className="mx-auto max-w-5xl px-6 pb-24">
-                <div className="mb-12 text-center">
-                    <h2 className="text-3xl font-bold tracking-tight mb-4">Why InstaChat?</h2>
-                    <p className="text-muted-foreground max-w-2xl mx-auto">
+            <section className="mx-auto max-w-5xl px-4 sm:px-6 pb-16 sm:pb-24">
+                <div className="mb-8 sm:mb-12 text-center">
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3 sm:mb-4">Why InstaChat?</h2>
+                    <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-base">
                         Designed with ultimate privacy and simplicity in mind. No compromises.
                     </p>
                 </div>
-                <div className="grid gap-6 sm:grid-cols-2">
+                <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
                     {features.map((feature) => (
                         <Card key={feature.title} className="hover:shadow-md transition-shadow">
                             <CardHeader>
-                                <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-primary/10">
-                                    <feature.icon className="size-6 text-primary" />
+                                <div className="mb-3 sm:mb-4 flex size-10 sm:size-12 items-center justify-center rounded-lg bg-primary/10">
+                                    <feature.icon className="size-5 sm:size-6 text-primary" />
                                 </div>
-                                <CardTitle className="text-xl">
+                                <CardTitle className="text-lg sm:text-xl">
                                     {feature.title}
                                 </CardTitle>
-                                <CardDescription className="text-base mt-2">
+                                <CardDescription className="text-sm sm:text-base mt-2">
                                     {feature.description}
                                 </CardDescription>
                             </CardHeader>
@@ -131,11 +131,11 @@ export default function LandingPage() {
             </section>
 
             {/* Donation Section */}
-            <section className="mx-auto max-w-2xl px-6 pb-24 text-center">
+            <section className="mx-auto max-w-2xl px-4 sm:px-6 pb-16 sm:pb-24 text-center">
                 <Card className="border-primary/20 bg-primary/5">
                     <CardHeader>
-                        <CardTitle className="text-2xl mb-2">Support the Project</CardTitle>
-                        <CardDescription className="text-base text-foreground/80 mb-6">
+                        <CardTitle className="text-xl sm:text-2xl mb-2">Support the Project</CardTitle>
+                        <CardDescription className="text-sm sm:text-base text-foreground/80 mb-6">
                             InstaChat is a free, open-source project. If you find it useful, consider supporting its development and server costs!
                         </CardDescription>
                         <KofiWidget />
@@ -145,13 +145,13 @@ export default function LandingPage() {
 
             {/* Footer */}
             <footer className="border-t">
-                <div className="mx-auto flex flex-col sm:flex-row max-w-5xl items-center justify-between px-6 py-8 text-sm text-muted-foreground gap-4">
+                <div className="mx-auto flex flex-col sm:flex-row max-w-5xl items-center justify-between px-4 sm:px-6 py-6 sm:py-8 text-sm text-muted-foreground gap-4">
                     <div className="flex items-center gap-2">
-                        <InstaChatLogo className="h-6 w-auto" />
+                        <InstaChatLogo className="h-5 sm:h-6 w-auto" />
                         <span className="font-semibold text-foreground">InstaChat</span>
                     </div>
-                    <p>Private by design. No data collected.</p>
-                    <div className="flex items-center gap-4">
+                    <p className="text-center sm:text-left">Private by design. No data collected.</p>
+                    <div className="flex flex-wrap justify-center items-center gap-4">
                         <Link to="/terms" className="hover:text-foreground transition-colors">
                             Terms & Privacy
                         </Link>
