@@ -389,6 +389,8 @@ export default function ChatPage() {
       timestamp,
     });
 
+    logger.debug("Sending message", JSON.parse(payload));
+
     chatSocket.send(payload);
   }, []);
 
@@ -460,7 +462,12 @@ export default function ChatPage() {
       )}
       <header className="flex items-center justify-between border-b px-4 py-2 min-w-0">
         <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
-          <Button variant="ghost" size="icon-sm" onClick={handleLeave} className="shrink-0">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={handleLeave}
+            className="shrink-0"
+          >
             <ArrowLeft className="size-4" />
           </Button>
           <div className="flex items-center gap-2 overflow-hidden">

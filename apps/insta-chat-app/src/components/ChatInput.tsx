@@ -108,6 +108,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
           type: attachedFile.type,
           name: attachedFile.name,
           dataUrl: attachedFile.dataUrl,
+          text: data.message.trim() || undefined,
         });
         onSend(`[FILE]${payload}`);
         setAttachedFile(null);
@@ -286,7 +287,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
                     {...field}
                     placeholder={
                       attachedFile
-                        ? "Press send to upload file..."
+                        ? "Add a message..."
                         : "Message..."
                     }
                     rows={1}
@@ -297,7 +298,7 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
                       handleChange();
                     }}
                     onPaste={handlePaste}
-                    disabled={disabled || !!attachedFile}
+                    disabled={disabled}
                     autoFocus
                   />
                   <InputGroupAddon

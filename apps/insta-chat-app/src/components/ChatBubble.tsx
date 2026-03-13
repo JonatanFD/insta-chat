@@ -16,6 +16,7 @@ export const ChatBubble = memo(({ msg, isMine }: ChatBubbleProps) => {
   let isFile = false;
   let fileDataUrl = "";
   let fileName = "";
+  let fileText = "";
   const textContent = msg.content;
 
   if (msg.content.startsWith("[FILE]")) {
@@ -25,6 +26,9 @@ export const ChatBubble = memo(({ msg, isMine }: ChatBubbleProps) => {
       isImage = fileData.type === "image";
       fileDataUrl = fileData.dataUrl;
       fileName = fileData.name;
+      if (fileData.text) {
+        fileText = fileData.text;
+      }
     } catch {
       // JSON parse error, treat as text
     }
@@ -42,8 +46,11 @@ export const ChatBubble = memo(({ msg, isMine }: ChatBubbleProps) => {
   }
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(textContent);
-    toast.success("Message copied");
+    const textToCopy = isFile ? fileText : textContent;
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy);
+      toast.success("Message copied");
+    }
   };
 
   const handleDownload = () => {
@@ -60,7 +67,7 @@ export const ChatBubble = memo(({ msg, isMine }: ChatBubbleProps) => {
       className={`flex items-end gap-2 group ${isMine ? "flex-row-reverse" : "flex-row"}`}
     >
       {!isMine && (
-        <Avatar className="size-7">
+        <Avatar className="size-7 shrink-0">
           <AvatarFallback className="text-xs">
             {msg.senderName.slice(0, 2).toUpperCase()}
           </AvatarFallback>
@@ -78,15 +85,21 @@ export const ChatBubble = memo(({ msg, isMine }: ChatBubbleProps) => {
             </p>
           )}
           {isImage ? (
-            <img
-              src={fileDataUrl}
-              alt={fileName}
-              className="mt-1 rounded-md max-w-full max-h-64 object-contain"
-            />
+            <div className="flex flex-col">
+              <img
+                src={fileDataUrl}
+                alt={fileName}
+                className="mt-1 rounded-md max-w-full max-h-64 object-contain bg-black/5"
+              />
+              {fileText && <p className="mt-2 break-words whitespace-pre-wrap">{fileText}</p>}
+            </div>
           ) : isFile ? (
-            <div className="flex items-center gap-3 mt-1 rounded-md bg-background/20 p-2">
-              <FileIcon className="size-8 opacity-80" />
-              <span className="truncate max-w-[150px] font-medium">{fileName}</span>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-3 mt-1 rounded-md bg-background/20 p-2">
+                <FileIcon className="size-8 opacity-80 shrink-0" />
+                <span className="truncate max-w-[150px] font-medium">{fileName}</span>
+              </div>
+              {fileText && <p className="mt-2 break-words whitespace-pre-wrap">{fileText}</p>}
             </div>
           ) : (
             <p className="break-words whitespace-pre-wrap">{textContent}</p>
@@ -103,27 +116,27 @@ export const ChatBubble = memo(({ msg, isMine }: ChatBubbleProps) => {
           </div>
         </div>
       </div>
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+      <div className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex flex-col gap-1 self-center shrink-0">
         {isFile && (
           <Button
             variant="ghost"
             size="icon"
-            className="size-6"
+            className="size-8 md:size-6"
             onClick={handleDownload}
             title="Download"
           >
-            <Download className="size-3" />
+            <Download className="size-4 md:size-3" />
           </Button>
         )}
-        {!isFile && (
+        {(!isFile || fileText) && (
           <Button
             variant="ghost"
             size="icon"
-            className="size-6"
+            className="size-8 md:size-6"
             onClick={handleCopy}
             title="Copy message"
           >
-            <Copy className="size-3" />
+            <Copy className="size-4 md:size-3" />
           </Button>
         )}
       </div>
