@@ -98,7 +98,7 @@ export default function CreateChatPage() {
                         setRateLimitModalOpen(true);
                         return; // return so we don't set a normal error
                     }
-                } catch (e) {
+                } catch {
                     // Not a JSON error, handle normally
                 }
                 setError(err.message);
@@ -169,7 +169,7 @@ export default function CreateChatPage() {
                                     placeholder="e.g. secret-meeting"
                                     value={chatName}
                                     onChange={(e) => {
-                                        setChatName(e.target.value);
+                                        setChatName(e.target.value.replace(/\s+/g, '_'));
                                         setError(null);
                                     }}
                                     onKeyDown={handleKeyDown}
