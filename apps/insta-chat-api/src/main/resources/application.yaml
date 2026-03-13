@@ -1,6 +1,14 @@
 spring:
     application:
         name: insta-chat-api
+    data:
+        redis:
+            host: ${REDIS_HOST:localhost}
+            port: ${REDIS_PORT:6379}
+            password: ${REDIS_PASSWORD:}
+            username: ${REDIS_USERNAME:}
+            ssl:
+                enabled: ${REDIS_SSL:false}
 
 app:
     jwt:
