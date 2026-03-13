@@ -104,7 +104,12 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
       }
 
       if (attachedFile) {
-        onSend(attachedFile.dataUrl);
+        const payload = JSON.stringify({
+          type: attachedFile.type,
+          name: attachedFile.name,
+          dataUrl: attachedFile.dataUrl,
+        });
+        onSend(`[FILE]${payload}`);
         setAttachedFile(null);
       } else if (data.message.trim()) {
         onSend(data.message.trim());

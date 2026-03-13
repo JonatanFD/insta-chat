@@ -3,7 +3,7 @@ import { memo, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { formatTime } from "@/lib/utils";
-import { CheckCheck, Copy } from "lucide-react";
+import { CheckCheck, Copy, Download, File as FileIcon } from "lucide-react";
 import { Button } from "./ui/button";
 
 interface ChatBubbleProps {
@@ -12,12 +12,48 @@ interface ChatBubbleProps {
 }
 
 export const ChatBubble = memo(({ msg, isMine }: ChatBubbleProps) => {
+  let isImage = false;
+  let isFile = false;
+  let fileDataUrl = "";
+  let fileName = "";
+  const textContent = msg.content;
+
+  if (msg.content.startsWith("[FILE]")) {
+    try {
+      const fileData = JSON.parse(msg.content.substring(6));
+      isFile = true;
+      isImage = fileData.type === "image";
+      fileDataUrl = fileData.dataUrl;
+      fileName = fileData.name;
+    } catch {
+      // JSON parse error, treat as text
+    }
+  } else if (msg.content.startsWith("data:image/")) {
+    // Backward compatibility with previous image sends
+    isImage = true;
+    isFile = true;
+    fileDataUrl = msg.content;
+    fileName = "image.jpg";
+  } else if (msg.content.startsWith("data:")) {
+    // Backward compatibility with raw data URLs
+    isFile = true;
+    fileDataUrl = msg.content;
+    fileName = "file";
+  }
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(msg.content);
+    navigator.clipboard.writeText(textContent);
     toast.success("Message copied");
   };
 
-  const isImage = msg.content.startsWith("data:image/");
+  const handleDownload = () => {
+    const link = document.createElement("a");
+    link.href = fileDataUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div
@@ -43,12 +79,17 @@ export const ChatBubble = memo(({ msg, isMine }: ChatBubbleProps) => {
           )}
           {isImage ? (
             <img
-              src={msg.content}
-              alt="Shared"
+              src={fileDataUrl}
+              alt={fileName}
               className="mt-1 rounded-md max-w-full max-h-64 object-contain"
             />
+          ) : isFile ? (
+            <div className="flex items-center gap-3 mt-1 rounded-md bg-background/20 p-2">
+              <FileIcon className="size-8 opacity-80" />
+              <span className="truncate max-w-[150px] font-medium">{fileName}</span>
+            </div>
           ) : (
-            <p className="break-words whitespace-pre-wrap">{msg.content}</p>
+            <p className="break-words whitespace-pre-wrap">{textContent}</p>
           )}
           <div className="flex justify-end items-center gap-1 mt-1">
             <p
@@ -62,17 +103,30 @@ export const ChatBubble = memo(({ msg, isMine }: ChatBubbleProps) => {
           </div>
         </div>
       </div>
-      {!isImage && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="opacity-0 group-hover:opacity-100 transition-opacity size-6"
-          onClick={handleCopy}
-          title="Copy message"
-        >
-          <Copy className="size-3" />
-        </Button>
-      )}
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+        {isFile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            onClick={handleDownload}
+            title="Download"
+          >
+            <Download className="size-3" />
+          </Button>
+        )}
+        {!isFile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            onClick={handleCopy}
+            title="Copy message"
+          >
+            <Copy className="size-3" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 });
