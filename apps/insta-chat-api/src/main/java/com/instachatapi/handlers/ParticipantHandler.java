@@ -35,7 +35,7 @@ public class ParticipantHandler {
                 return jwtService.decode(jwt);
             })
             .flatMap(jwtPayload -> {
-                var chatName = request.pathVariable("chatName");
+                var chatName = request.pathVariable("chatName").trim().replaceAll("\\s+", "_");
 
                 if (!jwtPayload.chatName().equals(chatName)) {
                     return Mono.error(
